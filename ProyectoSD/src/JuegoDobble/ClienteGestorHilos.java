@@ -83,6 +83,7 @@ public class ClienteGestorHilos extends Thread{
             // mientras la conexión esté abierta y haya datos para leer se ejecuta todo el rato el bucle
             while ((linea = in.readLine()) != null) { 
                 System.out.println("Comando de " + nombreUsuario + ": " + linea);
+                manejarComando(linea);
             }
         } catch (IOException e) {
         	// La excepción se lanza cuando el cliente cierra la ventana (la X) por ejemplo.
@@ -97,4 +98,57 @@ public class ClienteGestorHilos extends Thread{
             }
         }
     } 
+    
+    
+     //Procesa los comandos recibidos del cliente (JUGAR, INTENTO,...)
+    private void manejarComando(String comando) {
+        String[] partes = comando.split("\\|");
+        String accion = partes[0];
+        
+        switch (accion) {
+            case "JUGAR":
+                
+                int numJugadores = 2; 
+                try {
+                    if (partes.length > 1) {
+                        numJugadores = Integer.parseInt(partes[1]);
+                    }
+                } catch (NumberFormatException e) {
+                    sendMessage("ERROR|Formato de JUGAR incorrecto. Usando 2 jugadores.");
+                }
+                
+                if (numJugadores < 2 || numJugadores > 8) {
+                    sendMessage("ERROR|Número de jugadores debe ser entre 2 y 8.");
+                    break;
+                }
+
+                if (!enPartida) { 
+                    DobbleServer.getCoordinadorPartida().joinWaitingList(this, numJugadores); 
+                } else {
+                    sendMessage("ERROR|Ya estás en una partida o sala de espera.");
+                }
+                break;
+                
+            case "DESCONECTAR":
+                 try { 
+                	 clientSocket.close(); 
+                 } catch (IOException e) {
+                	 e.printStackTrace();
+                 }
+                 break;
+
+            case "INTENTO": 
+            case "RENDIRSE":
+            case "HISTORIAL":
+                 sendMessage("ERROR|hay que impleeeemeentar.");
+                 break;
+
+            default:
+                 sendMessage("ERROR|Comando desconocido: " + accion);
+                 break;
+        }
+        
+    }
+
+   
 }

@@ -91,8 +91,15 @@ public class DobbleClient extends JFrame {
 
     // crea la ventana para el menú
     private JPanel crearVistaMenu() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.add(new JLabel("Menú Principal - Conexión Exitosa"), BorderLayout.CENTER);
+        JPanel panel = new JPanel(new FlowLayout());
+        panel.add(new JLabel("Selecciona Partida:"));
+        
+        JButton btnJugar2 = new JButton("Jugar (2 Jugadores)");
+        // Llama a enviarComando con el formato "comando|valor"
+        btnJugar2.addActionListener(e -> enviarComando("JUGAR|2")); 
+        panel.add(btnJugar2);
+        
+        
         return panel;
     }
     
@@ -132,14 +139,32 @@ public class DobbleClient extends JFrame {
 
     // lo usa el hilo secundario ClienteHiloEscucha cuando el servidor envía un mensaje
     public void procesarRespuesta(String respuesta) {
-        // SwingUtilities.invokeLater es crucial para que la GUI no falle, es su hilo
         SwingUtilities.invokeLater(() -> {
+            String[] partes = respuesta.split("\\|");
+            String accion = partes[0];
+            String contenido = partes.length > 1 ? partes[1] : "";             
             logArea.append("[SERVIDOR] " + respuesta + "\n");
             
-            if (respuesta.equals("LOGIN_OK")) {
-                // Si el servidor valida, cambiamos al menú
-                cardLayout.show(mainPanel, VISTA_MENU); 
-                setTitle("Dobble Online - " + txtUsuario.getText());
+            switch (accion) {
+                case "LOGIN_OK":
+                    cardLayout.show(mainPanel, VISTA_MENU); 
+                    setTitle("Dobble Online - " + txtUsuario.getText());
+                    break;
+                
+                case "ESPERA":
+                    //  el jugador ha entrado a la cola
+                    logArea.append("[ESPERA] " + contenido + "\n");
+                    break;
+
+                case "ESPERA_ACTUALIZACION":
+                    // notifica a los jugadores en la cola sobre el estado
+                    logArea.append("[ACTUALIZACIÓN] Jugadores en sala: " + contenido + "\n");
+                    break;
+                    
+                case "ERROR":
+                    JOptionPane.showMessageDialog(this, contenido, "Error del Servidor", JOptionPane.ERROR_MESSAGE);
+                    break;
+                    
             }
         });
     }
