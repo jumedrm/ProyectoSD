@@ -31,6 +31,7 @@ public class DobbleServer {
      }
  }
 
+ 
  // Método para eliminar un cliente desconectado
  public static void removerCliente(ClienteGestorHilos cliente) {
      clientesConectados.remove(cliente);
