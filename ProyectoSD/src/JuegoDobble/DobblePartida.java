@@ -115,20 +115,81 @@ public class DobblePartida {
                 .collect(Collectors.joining(","));
     }
     
+    // serializa las puntuaciones 'nombre1:puntuaciónX,nombre2:puntuaciónY'
     private String serializarPuntuaciones() {
-         // Implementación mínima para que el cliente no falle al inicio 
-         return "0:0"; 
+        return puntuaciones.entrySet().stream()
+                .map(e -> e.getKey() + ":" + e.getValue())
+                .collect(Collectors.joining(","));
     }
     
     
     // Métodos llamados por ClienteGestorHilos
     public void procesarDesconexion(ClienteGestorHilos perdedor) {}
     public void procesarRendicion(ClienteGestorHilos perdedor) {}
+    /*
+    Procesa el intento de un jugador.
+    - se le pasa el hilo del jugador y el símbolo identificado
+   */
     public void procesarIntento(ClienteGestorHilos jugador, int simbolo) {
-    	jugador.sendMessage("ERROR_JUEGO|Hay que implementaar esto");
+      
+    	// Si la partida ha terminado, se ignora el intento
+    	if (cartaCentral == null) {
+    		jugador.sendMessage("ERROR_JUEGO|La partida ha terminado. Esperando a ser redirigido.");
+    		return; 
+    	}
+      
+    	// se coge el nombre del jugador y a través del nombre se coge la carta del jugador
+    	String nombre = jugador.getNombreUsuario();
+    	List<Integer> cartaJugador = cartasJugadores.get(nombre);
+      
+    	// 1. Verificar la coincidencia, si es correcto, entra al if
+    	if (logica.esCoincidenciaValida(simbolo, cartaJugador, cartaCentral)) {
+       
+    		// 2. Suma un punto y lo actualiza
+    		int nuevaPuntuacion = puntuaciones.get(nombre) + 1;
+    		puntuaciones.put(nombre, nuevaPuntuacion);
+          
+    		// 3. Notificar a todos los jugadores
+    		notificarATodos("PUNTO|" + nombre + "|" + nuevaPuntuacion + "|" + serializarPuntuaciones());
+          
+    		// 4. se reparte nueva carta, la central pasa al jugador y una nueva en la central 
+    		cartasJugadores.put(nombre, cartaCentral);
+    		cartaCentral = logica.repartirCarta(); 
+          
+    		if (cartaCentral == null) {
+    			terminarPartida(); // Llama a terminar si ya no hay cartas
+    		} else {
+    			iniciarNuevaRonda();
+    		}
+    	} else {// Coincidencia incorrecta, le avisa al jugador
+    		jugador.sendMessage("ERROR_JUEGO|El símbolo " + simbolo + " no es la coincidencia. ¡Inténtalo de nuevo!");
+    	}
     }
-    private void iniciarNuevaRonda() {  }
+
+	//después de que un jugador gana un punto, se llama a este método,
+	// para enviarles a todos los jugadores las nuevas cartas, para la siguiente ronda (actualiza)
+	private void iniciarNuevaRonda() {
+		//serializa la carta central a String
+	    String cartaCentralSerializada = serializarCarta(cartaCentral);
+	    
+	    // avisa a todos los jugadores sobre la nueva carta central y sus cartas
+	    for (ClienteGestorHilos jugador : jugadores) {
+	        String nombre = jugador.getNombreUsuario();
+	        String cartaJugadorSerializada = serializarCarta(cartasJugadores.get(nombre));
+	        
+	        String mensajeRonda = "NUEVA_RONDA|" + cartaJugadorSerializada + "|" + cartaCentralSerializada + "|" + serializarPuntuaciones();
+	        jugador.sendMessage(mensajeRonda);
+	    }
+	}
+
     private void terminarPartida() {  }
     private String obtenerListaParticipantes() { return "jugadores"; }
-    private String obtenerGanador() { return "ganador"; }
+    
+    // devuelve el ganador comparando las puntuaciones y lo devuelve como String
+    private String obtenerGanador() {
+        return puntuaciones.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse("Empate/Error");
+    }
 }

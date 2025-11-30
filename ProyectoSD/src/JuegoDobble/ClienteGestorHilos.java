@@ -137,7 +137,20 @@ public class ClienteGestorHilos extends Thread{
                  }
                  break;
 
-            case "INTENTO": 
+            case "INTENTO":
+            	//usa DobblePartida
+                if (enPartida && partidaActual != null) {
+                    try {
+                        int simbolo = Integer.parseInt(partes[1]);
+                        partidaActual.procesarIntento(this, simbolo); 
+                    } catch (NumberFormatException e) {
+                        sendMessage("ERROR|Símbolo no válido.");
+                    }
+                } else {
+                    sendMessage("ERROR|No estás en una partida activa.");
+                }
+                break;
+
             case "RENDIRSE":
             case "HISTORIAL":
                  sendMessage("ERROR|hay que impleeeemeentar.");

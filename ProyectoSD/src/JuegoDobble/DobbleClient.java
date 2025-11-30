@@ -274,22 +274,44 @@ public class DobbleClient extends JFrame {
                     JOptionPane.showMessageDialog(this, contenido, "Error del Servidor", JOptionPane.ERROR_MESSAGE);
                     break;
                 case "INICIO_PARTIDA":
-                    // INICIO_PARTIDA|carta_jugador|carta_central|puntuaciones
-                    if (partes.length < 4) { return; }
-
+                case "NUEVA_RONDA":
+                    // NUEVA_RONDA|carta_jugador|carta_central|puntuaciones 
+                    if (partes.length < 4) {
+                        logArea.append("ERROR: Datos de partida incompletos.\n");
+                        return;
+                    }
                     String cartaJugador = partes[1];
                     String cartaCentral = partes[2];
                     String puntuacionesStr = partes[3];
 
-                    logArea.append("[JUEGO] Partida Iniciada!\n");
+                    logArea.append("[JUEGO] Nueva Ronda Iniciada!\n");
                     
-                    cardLayout.show(mainPanel, VISTA_JUEGO); 
+                    // vista del juego al principio
+                    if (accion.equals("INICIO_PARTIDA")) {
+                         cardLayout.show(mainPanel, VISTA_JUEGO); 
+                    }
                     
+                    // dibuja las cartas
                     dibujarCarta(panelCartaJugador, cartaJugador);
                     dibujarCarta(panelCartaCentral, cartaCentral);
                     
+                    // actualiza las puntuaciones
                     actualizarPuntuaciones(puntuacionesStr);
                     
+                    break;
+                case "PUNTO":
+                    // PUNTO|ganador|puntuacion_ganador|puntuaciones_totales
+                    logArea.append(">>>>> ¡" + partes[1].toUpperCase() + " GANA LA RONDA! <<<<<\n");
+                    actualizarPuntuaciones(partes[3]);
+                    break;
+                case "ERROR_JUEGO":
+                    logArea.append("[ERROR JUEGO] " + partes[1] + "\n");
+                    break;
+
+                case "FIN_PARTIDA":
+                    //falta por implementar
+                    JOptionPane.showMessageDialog(this, "Partida terminada.", "Fin de Juego", JOptionPane.INFORMATION_MESSAGE);
+                    cardLayout.show(mainPanel, VISTA_MENU);
                     break;
                 
                 default:
