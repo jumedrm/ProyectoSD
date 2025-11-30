@@ -120,69 +120,124 @@ public class DobblePartida {
 				.collect(Collectors.joining(","));
 	}
 
-	// Métodos llamados por ClienteGestorHilos
-	public void procesarDesconexion(ClienteGestorHilos perdedor) {
+	// cuando un jugador se se desconecta dándole a la 'X'(por ejemplo),
+	// se sale de la partida y esta se finaliza la partida y
+	// se recoge el ganador y el perdedor
+	private void terminarPartidaPorDesconexion(ClienteGestorHilos perdedor, ClienteGestorHilos ganador) {
+		String nombreGanador = ganador.getNombreUsuario();
+		String nombrePerdedor = perdedor.getNombreUsuario();
+		String participantes = String.format("%s, %s", nombreGanador, nombrePerdedor);
+		String puntuacionesFinales = serializarPuntuaciones();
+
+		// resumen para el historial con todos los datos recogidos
+		String resumenHistorial = "PARTICIPANTES: " + participantes + " @ GANADOR: " + nombreGanador + " @ RESULTADO: "
+				+ puntuacionesFinales + " (Desconexión de " + nombrePerdedor + ")";
+
+		// registra el resultado en el CoordinadorPartida para guardarlo en el historial
+		DobbleServer.getCoordinadorPartida().registrarResultado(resumenHistorial);
+
+		// mensaje que va a recibir el ganador
+		String mensajeFinGanador = String.format("¡%s ha cerrado la aplicación! Has ganado por abandono.",
+				nombrePerdedor);
+
+		// se avisa al ganador del fin de la partida, mandándole su correspondiente
+		// mensaje
+		ganador.sendMessage("FIN_PARTIDA|" + mensajeFinGanador + "|" + puntuacionesFinales);
+
+		// Actualiza el estado del jugador ganador en cuanto a estar jugando una partida
+		ganador.setEnPartida(false);
+		ganador.setPartidaActual(null);
+
+		System.out.printf("Partida finalizada por desconexión. Ganador: %s.%n", nombreGanador);
 	}
 
+	/*
+	 * Procesa la desconexión de un jugador (cierran la ventana). El oponente es
+	 * declarado ganador.
+	 */
+	public void procesarDesconexion(ClienteGestorHilos perdedor) {
+		ClienteGestorHilos ganador = null;
+
+		for (ClienteGestorHilos jugador : jugadores) {
+			if (jugador != perdedor) {
+				ganador = jugador;
+				break;
+			}
+		}
+
+		if (ganador != null) {
+			// avisa al ganador y registra lo ocurrido.
+			terminarPartidaPorDesconexion(perdedor, ganador);
+		} else {
+			// gestión de posible partida de 1 jugador o error
+			System.out
+					.println("Partida de " + perdedor.getNombreUsuario() + " terminada por desconexión sin oponente.");
+			perdedor.setEnPartida(false);
+			perdedor.setPartidaActual(null);
+		}
+	}
+
+	/*
+	 * Se procesa la rendición de un jugador y declara al otro como ganador.
+	 */
 	public void procesarRendicion(ClienteGestorHilos perdedor) {
-    	ClienteGestorHilos ganador = null;
+		ClienteGestorHilos ganador = null;
 
-        // encontrar al oponente (el ganador)
-        for (ClienteGestorHilos jugador : jugadores) {
-            if (jugador != perdedor) {
-                ganador = jugador;
-                break;
-            }
-        }
+		// encontrar al oponente (el ganador)
+		for (ClienteGestorHilos jugador : jugadores) {
+			if (jugador != perdedor) {
+				ganador = jugador;
+				break;
+			}
+		}
 
-        // Si hay ganador, declarar victoria por rendición
-        if (ganador != null) {
-            
-            // avisa al ganador y perdedor y registra lo ocurrido
-            terminarPartidaPorRendicion(perdedor, ganador);
-        } else {
-            // gestión de cuando solo había un jugador o no se encontró oponente.
-            perdedor.sendMessage("ERROR|Partida finalizada por error del sistema. Volviendo al menú.");
-            perdedor.setEnPartida(false);
-            perdedor.setPartidaActual(null);
-            perdedor.sendMessage("FIN_PARTIDA|Volviendo al menú principal.|");
-        }
-    }
-	
-	// cuando un jugador se quiere rendir, se finaliza la partida y se recoge el ganador y el perdedor
-    private void terminarPartidaPorRendicion(ClienteGestorHilos perdedor, ClienteGestorHilos ganador) {
-        String nombreGanador = ganador.getNombreUsuario();
-        String nombrePerdedor = perdedor.getNombreUsuario();
-        String participantes = String.format("%s, %s", nombreGanador, nombrePerdedor);
-        String puntuacionesFinales = serializarPuntuaciones();
+		// Si hay ganador, declarar victoria por rendición
+		if (ganador != null) {
 
-        // resumen para el historial con todos los datos recogidos
-        String resumenHistorial = 
-            "PARTICIPANTES: " + participantes + 
-            " @ GANADOR: " + nombreGanador + 
-            " @ RESULTADO: " + puntuacionesFinales + " (Rendición de " + nombrePerdedor + ")";
-        
-        // registra el resultado en el CoordinadorPartida para guardarlo en el historial
-        DobbleServer.getCoordinadorPartida().registrarResultado(resumenHistorial); 
-        
-        //  mensajes que van a recibir tanto el ganador como el perdedor
-        String mensajeFinGanador = String.format("¡%s se ha rendido! Has ganado la partida por abandono.", nombrePerdedor);
-        String mensajeFinPerdedor = "Te has rendido. Volviendo al menú principal.";
+			// avisa al ganador y perdedor y registra lo ocurrido
+			terminarPartidaPorRendicion(perdedor, ganador);
+		} else {
+			// gestión de cuando solo había un jugador o no se encontró oponente.
+			perdedor.sendMessage("ERROR|Partida finalizada por error del sistema. Volviendo al menú.");
+			perdedor.setEnPartida(false);
+			perdedor.setPartidaActual(null);
+			perdedor.sendMessage("FIN_PARTIDA|Volviendo al menú principal.|");
+		}
+	}
 
-        // se avisa a los jugadores del fin de la partida, mandándoles a cada uno su correspondiente mensaje
-        ganador.sendMessage("FIN_PARTIDA|" + mensajeFinGanador + "|" + puntuacionesFinales);
-        perdedor.sendMessage("FIN_PARTIDA|" + mensajeFinPerdedor + "|" + puntuacionesFinales); 
-        
-        // Actualiza el estado de los jugadores en cuanto a estar jugando una partida
-        for (ClienteGestorHilos jugador : jugadores) {
-            jugador.setEnPartida(false); 
-            jugador.setPartidaActual(null); 
-        }
-        
-        System.out.printf("Partida finalizada por rendición. Ganador: %s.%n", nombreGanador);
-    }
+	// cuando un jugador se quiere rendir, se finaliza la partida y se recoge el
+	// ganador y el perdedor
+	private void terminarPartidaPorRendicion(ClienteGestorHilos perdedor, ClienteGestorHilos ganador) {
+		String nombreGanador = ganador.getNombreUsuario();
+		String nombrePerdedor = perdedor.getNombreUsuario();
+		String participantes = String.format("%s, %s", nombreGanador, nombrePerdedor);
+		String puntuacionesFinales = serializarPuntuaciones();
 
+		// resumen para el historial con todos los datos recogidos
+		String resumenHistorial = "PARTICIPANTES: " + participantes + " @ GANADOR: " + nombreGanador + " @ RESULTADO: "
+				+ puntuacionesFinales + " (Rendición de " + nombrePerdedor + ")";
 
+		// registra el resultado en el CoordinadorPartida para guardarlo en el historial
+		DobbleServer.getCoordinadorPartida().registrarResultado(resumenHistorial);
+
+		// mensajes que van a recibir tanto el ganador como el perdedor
+		String mensajeFinGanador = String.format("¡%s se ha rendido! Has ganado la partida por abandono.",
+				nombrePerdedor);
+		String mensajeFinPerdedor = "Te has rendido. Volviendo al menú principal.";
+
+		// se avisa a los jugadores del fin de la partida, mandándoles a cada uno su
+		// correspondiente mensaje
+		ganador.sendMessage("FIN_PARTIDA|" + mensajeFinGanador + "|" + puntuacionesFinales);
+		perdedor.sendMessage("FIN_PARTIDA|" + mensajeFinPerdedor + "|" + puntuacionesFinales);
+
+		// Actualiza el estado de los jugadores en cuanto a estar jugando una partida
+		for (ClienteGestorHilos jugador : jugadores) {
+			jugador.setEnPartida(false);
+			jugador.setPartidaActual(null);
+		}
+
+		System.out.printf("Partida finalizada por rendición. Ganador: %s.%n", nombreGanador);
+	}
 
 	/*
 	 * Procesa el intento de un jugador. - se le pasa el hilo del jugador y el
@@ -227,7 +282,8 @@ public class DobblePartida {
 	}
 
 	// después de que un jugador gana un punto, se llama a este método,
-	// para enviarles a todos los jugadores las nuevas cartas, para la siguiente ronda (actualiza)
+	// para enviarles a todos los jugadores las nuevas cartas, para la siguiente
+	// ronda (actualiza)
 	private void iniciarNuevaRonda() {
 		// serializa la carta central a String
 		String cartaCentralSerializada = serializarCarta(cartaCentral);
@@ -245,20 +301,23 @@ public class DobblePartida {
 
 	// cuando se agota el mazo, se llama a este método, cuando
 	// logica.repartirCarta() devuelve null
-	// dice quien gana por las puntuaciones y genera el resumen para ponerlo en el historial de partidas
+	// dice quien gana por las puntuaciones y genera el resumen para ponerlo en el
+	// historial de partidas
 	private void terminarPartida() {
 		String ganador = obtenerGanador();
 		String puntuacionesFinales = serializarPuntuaciones();
 		String participantes = obtenerListaParticipantes();
 
 		// se hace el resumen de la partida
-		String resumen = String.format("PARTICIPANTES: %s @ GANADOR: %s @ RESULTADO: %s", participantes, ganador, puntuacionesFinales);
-		
+		String resumen = String.format("PARTICIPANTES: %s @ GANADOR: %s @ RESULTADO: %s", participantes, ganador,
+				puntuacionesFinales);
+
 		// registra el resultado en el CoordinadorPartida para guardarlo en el historial
-	    DobbleServer.getCoordinadorPartida().registrarResultado(resumen);
-	      
+		DobbleServer.getCoordinadorPartida().registrarResultado(resumen);
+
 		// avisa el fin a todos los jugadores
-		notificarATodos("FIN_PARTIDA|Ganador: " + ganador + " con " + puntuaciones.get(ganador) + " puntos.|" + puntuacionesFinales);
+		notificarATodos("FIN_PARTIDA|Ganador: " + ganador + " con " + puntuaciones.get(ganador) + " puntos.|"
+				+ puntuacionesFinales);
 
 		// Actualiza el estado del jugador en cuanto a estar jugando una partida
 		for (ClienteGestorHilos jugador : jugadores) {
@@ -270,15 +329,12 @@ public class DobblePartida {
 	}
 
 	/*
-	  Obtiene una cadena con los nombres de todos los participantes.
-	  Ejemplo: "nombrejugador1, nombrejugador2" (serializa los nombres)
+	 * Obtiene una cadena con los nombres de todos los participantes. Ejemplo:
+	 * "nombrejugador1, nombrejugador2" (serializa los nombres)
 	 */
 	private String obtenerListaParticipantes() {
-	    return this.jugadores.stream()
-	            .map(ClienteGestorHilos::getNombreUsuario)
-	            .collect(Collectors.joining(", "));
+		return this.jugadores.stream().map(ClienteGestorHilos::getNombreUsuario).collect(Collectors.joining(", "));
 	}
-
 
 	// devuelve el ganador comparando las puntuaciones y lo devuelve como String
 	private String obtenerGanador() {
