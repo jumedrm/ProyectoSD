@@ -16,6 +16,14 @@ public class DobbleClient extends JFrame {
     private static final String SERVER_IP = "127.0.0.1";
     private static final int PUERTO = 12345;
     
+    // Contenedor para la carta central
+    private JPanel panelCartaCentral; 
+    // Contenedor para la carta del jugador
+    private JPanel panelCartaJugador; 
+    
+    private JTextArea txtPuntuaciones; 
+    private JTextArea txtHistorial; 
+    
     //el socket, para enviar y recibir
     private Socket socket;
     private PrintWriter out;
@@ -29,7 +37,10 @@ public class DobbleClient extends JFrame {
     // Estados de la interfaz para saber qué pantalla mostrar
     private static final String VISTA_LOGIN = "Login";
     private static final String VISTA_MENU = "Menu";
+    private static final String VISTA_JUEGO = "Juego";
+    private static final String VISTA_HISTORIAL = "Historial"; // ¡Nuevo!
     private CardLayout cardLayout;
+
 
     
     //el main se encarga de que todo funcione por el hilo de la interfaz gráfica, comenzando a gestionar este hilo el constructor de la clase
@@ -63,7 +74,11 @@ public class DobbleClient extends JFrame {
         // vista de Login
         mainPanel.add(crearVistaLogin(), VISTA_LOGIN);
         // Vista del menú
-        mainPanel.add(crearVistaMenu(), VISTA_MENU); 
+        mainPanel.add(crearVistaMenu(), VISTA_MENU);
+        // vista del juego
+        mainPanel.add(crearVistaJuego(), VISTA_JUEGO);
+        // vista del historial
+        mainPanel.add(crearVistaHistorial(), VISTA_HISTORIAL);
         
         // Inicializar log (necesario para la conexión)
         logArea = new JTextArea(10, 50);
@@ -103,6 +118,100 @@ public class DobbleClient extends JFrame {
         return panel;
     }
     
+    // crea la ventana para el historial
+    private JPanel crearVistaHistorial() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("Historial de Partidas"));
+        
+        txtHistorial = new JTextArea();
+        txtHistorial.setEditable(false);
+        
+        // Acción para solicitar volver al menú
+        JButton btnVolver = new JButton("Volver al Menú");
+        btnVolver.addActionListener(e -> cardLayout.show(mainPanel, VISTA_MENU));
+        
+        panel.add(new JScrollPane(txtHistorial), BorderLayout.CENTER);
+        panel.add(btnVolver, BorderLayout.SOUTH);
+        return panel;
+    }
+    
+    private JPanel crearVistaJuego() {
+        JPanel panel = new JPanel(new BorderLayout(5, 5));
+        
+        logArea = new JTextArea(5, 50);
+        logArea.setEditable(false);
+        panel.add(new JScrollPane(logArea), BorderLayout.NORTH);
+        
+        // para que salgan las puntuaciones 
+        txtPuntuaciones = new JTextArea(15, 15);
+        txtPuntuaciones.setEditable(false);
+        txtPuntuaciones.setBorder(BorderFactory.createTitledBorder("Puntuaciones"));
+        panel.add(new JScrollPane(txtPuntuaciones), BorderLayout.WEST);
+
+        // Contenedor principal del juego (Cartas)
+        JPanel gameContainer = new JPanel(new GridLayout(1, 2, 20, 20));
+        gameContainer.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        //carta central
+        panelCartaCentral = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        panelCartaCentral.setBorder(BorderFactory.createTitledBorder("Carta Central"));
+        gameContainer.add(panelCartaCentral);
+
+        //carta del Jugador
+        panelCartaJugador = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        panelCartaJugador.setBorder(BorderFactory.createTitledBorder("Mi Carta"));
+        gameContainer.add(panelCartaJugador);
+
+        panel.add(gameContainer, BorderLayout.CENTER);
+        
+        JButton btnRendirse = new JButton("Rendirse y Salir");
+        btnRendirse.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(this, "¿Estás seguro de que quieres rendirte?", "Confirmar Rendición", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) { enviarComando("RENDIRSE"); }
+        });
+        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        controlPanel.add(btnRendirse);
+        panel.add(controlPanel, BorderLayout.SOUTH);
+        
+        return panel;
+    }
+    
+ // crea la carta
+    private void dibujarCarta(JPanel panel, String simbolosStr) {
+        // limpia el panel antes de añadir nuevos botones 
+        panel.removeAll(); 
+
+        // Convierte la cadena "1,2,3" en un array de Strings
+        String[] simbolos = simbolosStr.split(",");
+        
+        //Crea un botón por cada símbolo
+        for (String simbolo : simbolos) {
+            if (simbolo.isEmpty()) continue; 
+
+            JButton btnSimbolo = new JButton(simbolo);
+            // Tamaño para los botones
+            btnSimbolo.setPreferredSize(new Dimension(80, 80));
+            
+            // acción de enviar el INTENTO al servidor
+            btnSimbolo.addActionListener(e -> {
+                // El comando va a ser INTENTO|SIMBOLO (ej: INTENTO|2)
+                enviarComando("INTENTO|" + simbolo); 
+                // se envía el intento al servidor
+            });
+            
+            panel.add(btnSimbolo);
+        }
+
+        // Actualiza la vista del panel
+        panel.revalidate();
+        panel.repaint();
+    }
+    
+ // método para actualizar las puntuaciones
+    private void actualizarPuntuaciones(String puntuacionesStr) {
+    	txtPuntuaciones.setText("Puntuaciones Iniciales:\n" + puntuacionesStr);
+    }
+    
     // establece conexión con el servidor
     private void intentarConexion() {
         String usuario = txtUsuario.getText().trim();
@@ -129,7 +238,7 @@ public class DobbleClient extends JFrame {
         }
     }
     
- // envía instrucciones al server
+    // envía instrucciones al server
     public void enviarComando(String comando) {
         if (out != null) {
             out.println(comando);
@@ -163,6 +272,30 @@ public class DobbleClient extends JFrame {
                     
                 case "ERROR":
                     JOptionPane.showMessageDialog(this, contenido, "Error del Servidor", JOptionPane.ERROR_MESSAGE);
+                    break;
+                case "INICIO_PARTIDA":
+                    // INICIO_PARTIDA|carta_jugador|carta_central|puntuaciones
+                    if (partes.length < 4) { return; }
+
+                    String cartaJugador = partes[1];
+                    String cartaCentral = partes[2];
+                    String puntuacionesStr = partes[3];
+
+                    logArea.append("[JUEGO] Partida Iniciada!\n");
+                    
+                    cardLayout.show(mainPanel, VISTA_JUEGO); 
+                    
+                    dibujarCarta(panelCartaJugador, cartaJugador);
+                    dibujarCarta(panelCartaCentral, cartaCentral);
+                    
+                    actualizarPuntuaciones(puntuacionesStr);
+                    
+                    break;
+                
+                default:
+                    if (!accion.startsWith("ESPERA") && !accion.equals("LOGIN_OK")) { 
+                         logArea.append("[SERVIDOR] Comando no reconocido: " + respuesta + "\n");
+                    }
                     break;
                     
             }
