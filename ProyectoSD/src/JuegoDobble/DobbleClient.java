@@ -307,13 +307,30 @@ public class DobbleClient extends JFrame {
                 case "ERROR_JUEGO":
                     logArea.append("[ERROR JUEGO] " + partes[1] + "\n");
                     break;
-
                 case "FIN_PARTIDA":
-                    //falta por implementar
-                    JOptionPane.showMessageDialog(this, "Partida terminada.", "Fin de Juego", JOptionPane.INFORMATION_MESSAGE);
-                    cardLayout.show(mainPanel, VISTA_MENU);
-                    break;
-                
+                    // FIN_PARTIDA|MensajeGanador|PuntuacionesTotales
+                    
+                	// mensaje de rendición/desconexión
+                    String mensaje = partes[1]; 
+                    String puntuaciones = partes[2];
+                    
+                    // muestra el mensaje de forma destacada
+                    JOptionPane.showMessageDialog(
+                        this, 
+                        mensaje + "\n\nPuntuaciones finales: " + puntuaciones, 
+                        "Partida Finalizada", 
+                        JOptionPane.INFORMATION_MESSAGE
+                    );
+                    
+                    logArea.append("--- FIN DE PARTIDA ---\n");
+                    logArea.append(mensaje + "\n");
+                    
+                    actualizarPuntuaciones(puntuaciones);
+                    
+                    // Vuelve al menú principal
+                    cardLayout.show(mainPanel, VISTA_MENU); 
+                    
+                    break;                
                 default:
                     if (!accion.startsWith("ESPERA") && !accion.equals("LOGIN_OK")) { 
                          logArea.append("[SERVIDOR] Comando no reconocido: " + respuesta + "\n");
