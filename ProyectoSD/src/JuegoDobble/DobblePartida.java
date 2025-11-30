@@ -125,7 +125,64 @@ public class DobblePartida {
 	}
 
 	public void procesarRendicion(ClienteGestorHilos perdedor) {
-	}
+    	ClienteGestorHilos ganador = null;
+
+        // encontrar al oponente (el ganador)
+        for (ClienteGestorHilos jugador : jugadores) {
+            if (jugador != perdedor) {
+                ganador = jugador;
+                break;
+            }
+        }
+
+        // Si hay ganador, declarar victoria por rendición
+        if (ganador != null) {
+            
+            // avisa al ganador y perdedor y registra lo ocurrido
+            terminarPartidaPorRendicion(perdedor, ganador);
+        } else {
+            // gestión de cuando solo había un jugador o no se encontró oponente.
+            perdedor.sendMessage("ERROR|Partida finalizada por error del sistema. Volviendo al menú.");
+            perdedor.setEnPartida(false);
+            perdedor.setPartidaActual(null);
+            perdedor.sendMessage("FIN_PARTIDA|Volviendo al menú principal.|");
+        }
+    }
+	
+	// cuando un jugador se quiere rendir, se finaliza la partida y se recoge el ganador y el perdedor
+    private void terminarPartidaPorRendicion(ClienteGestorHilos perdedor, ClienteGestorHilos ganador) {
+        String nombreGanador = ganador.getNombreUsuario();
+        String nombrePerdedor = perdedor.getNombreUsuario();
+        String participantes = String.format("%s, %s", nombreGanador, nombrePerdedor);
+        String puntuacionesFinales = serializarPuntuaciones();
+
+        // resumen para el historial con todos los datos recogidos
+        String resumenHistorial = 
+            "PARTICIPANTES: " + participantes + 
+            " @ GANADOR: " + nombreGanador + 
+            " @ RESULTADO: " + puntuacionesFinales + " (Rendición de " + nombrePerdedor + ")";
+        
+        // registra el resultado en el CoordinadorPartida para guardarlo en el historial
+        DobbleServer.getCoordinadorPartida().registrarResultado(resumenHistorial); 
+        
+        //  mensajes que van a recibir tanto el ganador como el perdedor
+        String mensajeFinGanador = String.format("¡%s se ha rendido! Has ganado la partida por abandono.", nombrePerdedor);
+        String mensajeFinPerdedor = "Te has rendido. Volviendo al menú principal.";
+
+        // se avisa a los jugadores del fin de la partida, mandándoles a cada uno su correspondiente mensaje
+        ganador.sendMessage("FIN_PARTIDA|" + mensajeFinGanador + "|" + puntuacionesFinales);
+        perdedor.sendMessage("FIN_PARTIDA|" + mensajeFinPerdedor + "|" + puntuacionesFinales); 
+        
+        // Actualiza el estado de los jugadores en cuanto a estar jugando una partida
+        for (ClienteGestorHilos jugador : jugadores) {
+            jugador.setEnPartida(false); 
+            jugador.setPartidaActual(null); 
+        }
+        
+        System.out.printf("Partida finalizada por rendición. Ganador: %s.%n", nombreGanador);
+    }
+
+
 
 	/*
 	 * Procesa el intento de un jugador. - se le pasa el hilo del jugador y el

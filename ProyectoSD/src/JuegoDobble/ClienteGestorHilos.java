@@ -157,8 +157,15 @@ public class ClienteGestorHilos extends Thread{
                 sendMessage(historial);
                 break;
             case "RENDIRSE":
-                 sendMessage("ERROR|hay que impleeeemeentar.");
-                 break;
+            	//usa DobblePartida
+                if (enPartida && partidaActual != null) {
+                    partidaActual.procesarRendicion(this); 
+                } else {
+                    sendMessage("ERROR|No puedes rendirte, no estás en una partida activa.");
+                    sendMessage("FIN_PARTIDA|Te hemos devuelto al menú principal.|"); 
+                }
+                break;
+
 
             default:
                  sendMessage("ERROR|Comando desconocido: " + accion);

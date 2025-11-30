@@ -164,18 +164,30 @@ public class DobbleClient extends JFrame {
         gameContainer.add(panelCartaJugador);
 
         panel.add(gameContainer, BorderLayout.CENTER);
-        
+      //Botón de Rendirse 
         JButton btnRendirse = new JButton("Rendirse y Salir");
         btnRendirse.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(this, "¿Estás seguro de que quieres rendirte?", "Confirmar Rendición", JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) { enviarComando("RENDIRSE"); }
+            // Confirmación antes de rendirse
+            int confirm = JOptionPane.showConfirmDialog(
+                this, 
+                "¿Estás seguro de que quieres rendirte? La partida se dará por perdida.",
+                "Confirmar Rendición", 
+                JOptionPane.YES_NO_OPTION
+            );
+            // se envía la acción al servidor con enviarComando
+            if (confirm == JOptionPane.YES_OPTION) {
+                enviarComando("RENDIRSE"); 
+            }
         });
+        
+        
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         controlPanel.add(btnRendirse);
         panel.add(controlPanel, BorderLayout.SOUTH);
         
         return panel;
     }
+
     
  // crea la carta
     private void dibujarCarta(JPanel panel, String simbolosStr) {
