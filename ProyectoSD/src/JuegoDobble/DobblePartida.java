@@ -195,12 +195,13 @@ public class DobblePartida {
 		String participantes = obtenerListaParticipantes();
 
 		// se hace el resumen de la partida
-		String resumen = String.format("PARTICIPANTES: %s @ GANADOR: %s @ RESULTADO: %s", participantes, ganador,
-				puntuacionesFinales);
-
+		String resumen = String.format("PARTICIPANTES: %s @ GANADOR: %s @ RESULTADO: %s", participantes, ganador, puntuacionesFinales);
+		
+		// registra el resultado en el CoordinadorPartida para guardarlo en el historial
+	    DobbleServer.getCoordinadorPartida().registrarResultado(resumen);
+	      
 		// avisa el fin a todos los jugadores
-		notificarATodos("FIN_PARTIDA|Ganador: " + ganador + " con " + puntuaciones.get(ganador) + " puntos.|"
-				+ puntuacionesFinales);
+		notificarATodos("FIN_PARTIDA|Ganador: " + ganador + " con " + puntuaciones.get(ganador) + " puntos.|" + puntuacionesFinales);
 
 		// Actualiza el estado del jugador en cuanto a estar jugando una partida
 		for (ClienteGestorHilos jugador : jugadores) {

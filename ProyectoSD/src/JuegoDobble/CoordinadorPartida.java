@@ -72,10 +72,22 @@ public class CoordinadorPartida {
 	    
 	    
 	    
-	    public void registrarResultado(String resumenPartida) { 
-	        System.out.println("HAY QUE IMPLEMENTAR ESTA PARTE BIEEEENN: Resultado registrado.");
+	    //almacena el resultado de una partida
+	    //método usado por DobblePartida cuando termina
+	    public void registrarResultado(String resumenPartida) {
+	        //si dos partidas terminan simultaneamente, el resumen de ambas se guarda bien
+	    	synchronized (historialPartidas) {
+	            historialPartidas.add(resumenPartida);
+	        }
 	    }
-	    public String getHistorial() { 
-	        return "HISTORIAL|NO_DATA"; 
+	    
+	    // Método llamado por ClienteGestorHilos cuando un cliente pide el historial
+	    public String getHistorial() {
+	        if (historialPartidas.isEmpty()) {
+	            return "HISTORIAL|NO_DATA";
+	        }
+	        // Unimos todos los resúmenes en una sola cadena, separados por un delimitador ('###')
+	        String datos = String.join("###", historialPartidas);
+	        return "HISTORIAL|" + datos;
 	    }
 	}

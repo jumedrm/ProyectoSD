@@ -151,8 +151,12 @@ public class ClienteGestorHilos extends Thread{
                 }
                 break;
 
-            case "RENDIRSE":
             case "HISTORIAL":
+            	//llama a GameManager para obtener el historial
+                String historial = DobbleServer.getCoordinadorPartida().getHistorial();
+                sendMessage(historial);
+                break;
+            case "RENDIRSE":
                  sendMessage("ERROR|hay que impleeeemeentar.");
                  break;
 
@@ -160,8 +164,5 @@ public class ClienteGestorHilos extends Thread{
                  sendMessage("ERROR|Comando desconocido: " + accion);
                  break;
         }
-        
     }
-
-   
 }

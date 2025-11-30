@@ -113,8 +113,9 @@ public class DobbleClient extends JFrame {
         // Llama a enviarComando con el formato "comando|valor"
         btnJugar2.addActionListener(e -> enviarComando("JUGAR|2")); 
         panel.add(btnJugar2);
-        
-        
+        JButton btnHistorial = new JButton("Ver Historial");
+        // Acción para solicitar el historial
+        btnHistorial.addActionListener(e -> enviarComando("HISTORIAL"));
         return panel;
     }
     
@@ -330,7 +331,36 @@ public class DobbleClient extends JFrame {
                     // Vuelve al menú principal
                     cardLayout.show(mainPanel, VISTA_MENU); 
                     
-                    break;                
+                    break;      
+                case "HISTORIAL": 
+                    cardLayout.show(mainPanel, VISTA_HISTORIAL); 
+                    
+                    // Contiene todos los resúmenes unidos por '###'
+                    String datosHistorial = partes[1]; 
+                    
+                    if (datosHistorial.equals("NO_DATA")) {
+                        txtHistorial.setText("Aún no se ha jugado ninguna partida.");
+                    } else {
+                        // Separamos cada resumen de partida ('###')
+                        String[] partidas = datosHistorial.split("###");
+                        
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = 0; i < partidas.length; i++) {
+                            sb.append("--- PARTIDA ").append(i + 1).append(" ---\n");
+                            
+                            String resumenCompleto = partidas[i].trim();
+                            
+                            // reemplazamos el separador " @ " por un salto de línea
+                            String historialFormateado = resumenCompleto.replace(" @ ", "\n");
+                            
+                            // Imprimimos la cadena formateada
+                            sb.append(historialFormateado).append("\n");
+                         // Separador de partidas
+                            sb.append("---------------------------\n"); 
+                        }
+                        txtHistorial.setText(sb.toString());
+                    }
+                    break;
                 default:
                     if (!accion.startsWith("ESPERA") && !accion.equals("LOGIN_OK")) { 
                          logArea.append("[SERVIDOR] Comando no reconocido: " + respuesta + "\n");
