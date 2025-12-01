@@ -122,14 +122,25 @@ public class ClienteGestorHilos extends Thread {
 
 		switch (accion) {
 		case "JUGAR":
-			// Envía el hilo a la sala de espera que hay en CoordinadorPartida
-			if (!enPartida) {
-				// la sala de espera para 2 jugadores
-				DobbleServer.getCoordinadorPartida().joinWaitingList(this, 2);
-			} else {
-				sendMessage("ESPERA|Ya estás en una sala de espera o partida activa.");
-			}
-			break;
+			if (!enPartida && partes.length == 2) { // [MODIFICADO: Verificar que se haya pasado el número]
+                try {
+                    int maxJugadores = Integer.parseInt(partes[1]);
+                    // Se verifica que el número de jugadores esté en el rango permitido (2 a 8)
+                    if (maxJugadores >= 2 && maxJugadores <= 8) {
+                        // Envía el hilo a la sala de espera que hay en CoordinadorPartida
+                        DobbleServer.getCoordinadorPartida().joinWaitingList(this, maxJugadores);
+                    } else {
+                        sendMessage("ERROR|Número de jugadores no válido (2-8).");
+                    }
+                } catch (NumberFormatException e) {
+                    sendMessage("ERROR|Comando JUGAR inválido. Debe ser JUGAR|N.");
+                }
+            } else if (enPartida) {
+                sendMessage("ESPERA|Ya estás en una sala de espera o partida activa.");
+            } else {
+                 sendMessage("ERROR|Comando JUGAR inválido. Debe ser JUGAR|N.");
+            }
+            break;
 		case "HISTORIAL":
 			// llama a CoordinadorPartida para obtener el historial
 			String historial = DobbleServer.getCoordinadorPartida().getHistorial();

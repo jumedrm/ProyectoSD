@@ -32,6 +32,9 @@ public class DobbleClient extends JFrame {
 	private JPanel mainPanel;
 	private JTextField txtUsuario;
 	private JTextArea logArea;
+	
+	// para elegir numero de jugadores por partida
+	private JComboBox<Integer> numJugadoresSelector;
 
 	// Estados de la interfaz para saber qué pantalla mostrar
 	private static final String VISTA_LOGIN = "Login";
@@ -100,29 +103,50 @@ public class DobbleClient extends JFrame {
 
 	// crea la ventana para el menú
 	private JPanel crearVistaMenu() {
-		JPanel panel = new JPanel(new GridLayout(4, 1, 10, 10));
-		panel.setBorder(BorderFactory.createTitledBorder("Menú Principal"));
+	    // Definición del panel principal del menú con 4 filas
+	    JPanel panel = new JPanel(new GridLayout(4, 1, 10, 10));
+	    panel.setBorder(BorderFactory.createTitledBorder("Menú Principal"));
 
-		JButton btnJugar = new JButton("Unirse a Partida (2 Jugadores)");
-		JButton btnHistorial = new JButton("Ver Historial");
-		JButton btnDesconectar = new JButton("Desconectar");
+	    // Contenedor de la primera fila: Selector de jugadores y botón Jugar
+	    JPanel panelJugar = new JPanel(new FlowLayout(FlowLayout.CENTER));
+	    panelJugar.add(new JLabel("Nº de Jugadores:"));
 
-		panel.add(btnJugar);
-		panel.add(btnHistorial);
-		panel.add(btnDesconectar);
+	    // Selector para 2 a 8 jugadores
+	    Integer[] jugadoresOpciones = { 2, 3, 4, 5, 6, 7, 8 };
+	    numJugadoresSelector = new JComboBox<>(jugadoresOpciones);
+	    numJugadoresSelector.setSelectedIndex(0); 
+	    panelJugar.add(numJugadoresSelector);
 
-		// Acción para solicitar jugar y desconectarse
-		btnJugar.addActionListener(e -> enviarComando("JUGAR"));
-		btnDesconectar.addActionListener(e -> {
-			enviarComando("DESCONECTAR");
-			System.exit(0);
-		});
+	    JButton btnJugar = new JButton("Unirse a Partida");
+	    panelJugar.add(btnJugar);
+	        
+	    JButton btnHistorial = new JButton("Ver Historial");
+	    JButton btnDesconectar = new JButton("Desconectar");
 
-		// Acción para solicitar el historial
-		btnHistorial.addActionListener(e -> enviarComando("HISTORIAL"));
+	    // AÑADIMOS LOS PANELES Y BOTONES AL GRIDLAYOUT (panel):
+	    // Fila 1: Selector + Botón Jugar
+	    panel.add(panelJugar); 
+	    // Fila 2: Botón Historial
+	    panel.add(btnHistorial);
+	    // Fila 3: Botón Desconectar
+	    panel.add(btnDesconectar);
+	    // Fila 4 queda vacía (debido al GridLayout(4, 1))
 
-		// se envía la acción al servidor con enviarComando
-		return panel;
+	    // Acción para solicitar jugar (usa el selector)
+	    btnJugar.addActionListener(e -> {
+	        int numJugadores = (Integer) numJugadoresSelector.getSelectedItem();
+	        enviarComando("JUGAR|" + numJugadores);
+	    });
+	        
+	    btnDesconectar.addActionListener(e -> {
+	        enviarComando("DESCONECTAR");
+	        System.exit(0);
+	    });
+
+	    // Acción para solicitar el historial
+	    btnHistorial.addActionListener(e -> enviarComando("HISTORIAL"));
+
+	    return panel;
 	}
 
 	// crea la ventana para el historial
