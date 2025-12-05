@@ -353,6 +353,16 @@ public class DobbleClient extends JFrame {
 			case "ERROR_JUEGO":
 				logArea.append("[ERROR JUEGO] " + partes[1] + "\n");
 				break;
+			case "EVENTO_ABANDONO":
+			    // EVENTO_ABANDONO|TIPO|NOMBRE_JUGADOR
+			    String tipo = partes[1]; // RENDICION o DESCONEXION
+			    String nombreJugador = partes[2];
+			    
+			    logArea.append(String.format(">>>>> [ALERTA] %s se ha %s. La partida continúa. <<<<<\n", 
+			        nombreJugador, tipo.equals("RENDICION") ? "rendido" : "desconectado"));
+			    
+			    // No hay que hacer nada más, la partida sigue.
+			    break;
 			case "FIN_PARTIDA":
 				// FIN_PARTIDA|MensajeGanador|PuntuacionesTotales
 

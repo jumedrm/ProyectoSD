@@ -122,7 +122,7 @@ public class ClienteGestorHilos extends Thread {
 
 		switch (accion) {
 		case "JUGAR":
-			if (!enPartida && partes.length == 2) { // [MODIFICADO: Verificar que se haya pasado el número]
+			if (!enPartida && partes.length == 2) { 
                 try {
                     int maxJugadores = Integer.parseInt(partes[1]);
                     // Se verifica que el número de jugadores esté en el rango permitido (2 a 8)
