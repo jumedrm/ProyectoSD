@@ -30,21 +30,28 @@ public class DobblePartida {
 	// Almacena la carta que cada jugador tiene en su mano en la ronda actual
 	// Esta carta, está mapeada por el nombre de usuario
 	private Map<String, List<Integer>> cartasJugadores;
-	
-	// Rastrea si un jugador sigue activo o ha abandonado 
-	private Map<String, Boolean> jugadoresActivos; 
-	// Lista para registrar el orden de abandono (primero el que se rinde/desconecta primero)
+
+	// Rastrea si un jugador sigue activo o ha abandonado
+	private Map<String, Boolean> jugadoresActivos;
+	// Lista para registrar el orden de abandono (primero el que se rinde/desconecta
+	// primero)
 	private List<String> perdedoresPartida;
 
-	// Constructor necesario para inicialización en ClienteGestorHilos
+	// Pre: 'jugadores' es una lista de ClienteGestorHilos con N >= 2 jugadores
+	// listos para empezar a jugar.
+	// Post: Se inicializan las estructuras de datos (puntuaciones,
+	// jugadoresActivos, perdedoresPartida) y la instancia de DobbleLogic. El estado
+	// 'enPartida' de cada hilo en 'jugadores' se establece a 'true' y su
+	// 'partidaActual' se vincula a esta instancia. Finalmente, se llama a
+	// 'inicializarJuego()' para repartir las cartas iniciales.
 	public DobblePartida(List<ClienteGestorHilos> jugadores) {
 		// inicializa variables
 		this.jugadores = jugadores;
 		this.puntuaciones = new HashMap<>();
 		this.logica = new DobbleLogic();
 		this.cartasJugadores = new HashMap<>();
-		this.jugadoresActivos = new ConcurrentHashMap<>(); 
-	    this.perdedoresPartida = Collections.synchronizedList(new LinkedList<>());
+		this.jugadoresActivos = new ConcurrentHashMap<>();
+		this.perdedoresPartida = Collections.synchronizedList(new LinkedList<>());
 
 		// Por cada jugador (hilo del jugador) inicializa su puntuación y
 		// marca que no está en la sala de espera, para que el hilo lo sepa
@@ -59,7 +66,13 @@ public class DobblePartida {
 		inicializarJuego();
 	}
 
-	// Inicializa las puntuaciones y reparte las cartas iniciales
+	// Pre: Se llama al inicio de la partida. El mazo de 'logica' debe contener
+	// suficientes cartas (N+1, donde N es el número de jugadores).
+	// Post: Se extrae una carta para la 'cartaCentral' y una carta para cada
+	// jugador, almacenándolas en 'cartasJugadores'. Se envía el comando
+	// "INICIO_PARTIDA|..." a cada cliente con sus respectivas cartas y
+	// puntuaciones. Si no hay suficientes cartas, se notifica un error y la partida
+	// se cancela.
 	private void inicializarJuego() {
 		// 1. Asigna la carta central como una lista de números y la quita del mazo con
 		// el método repartirCarta()
@@ -110,20 +123,27 @@ public class DobblePartida {
 		}
 	}
 
-	// Envía mensajes o avisos a los jugadores que siguen en la partida.
+	// Pre: 'mensaje' es una cadena de texto (comando de protocolo) a enviar.
+	// Post: El 'mensaje' se envía a todos los hilos de la lista 'jugadores' cuya
+	// referencia 'partidaActual' sea esta instancia ('this'), asegurando que los
+	// clientes que ya se rindieron no reciban mensajes.
 	private void notificarATodos(String mensaje) {
-	    // Usamos la lista de jugadores de la partida (this.jugadores)
-	    for (ClienteGestorHilos jugador : jugadores) {
-	        // Solo notifica si el hilo todavía tiene asignada esta partida.
-	        // Un jugador que se rinde/desconecta ya tiene su partidaActual = null.
-	        if (jugador.getPartidaActual() == this) {
-	            jugador.sendMessage(mensaje);
-	        }
-	    }
+		// Usamos la lista de jugadores de la partida (this.jugadores)
+		for (ClienteGestorHilos jugador : jugadores) {
+			// Solo notifica si el hilo todavía tiene asignada esta partida.
+			// Un jugador que se rinde/desconecta ya tiene su partidaActual = null.
+			if (jugador.getPartidaActual() == this) {
+				jugador.sendMessage(mensaje);
+			}
+		}
 	}
 
-	// Convierte List<Integer> a String ("1,2,3,4,5,6,7,8")
+	// Pre: 'carta' es una lista de enteros que representan los símbolos de una
+	// carta o 'null'.
+	// Post: Retorna una cadena de texto con los símbolos de la lista unidos por
+	// comas. Retorna una cadena vacía si la lista es nula o vacía.
 	private String serializarCarta(List<Integer> carta) {
+		// Convierte List<Integer> a String ("1,2,3,4,5,6,7,8")
 		if (carta == null) {
 			// En caso de mazo vacío o error
 			return "";
@@ -131,111 +151,140 @@ public class DobblePartida {
 		return carta.stream().map(Object::toString).collect(Collectors.joining(","));
 	}
 
-	// serializa las puntuaciones 'nombre1:puntuaciónX,nombre2:puntuaciónY'
+	// Pre: La estructura 'puntuaciones' está inicializada y contiene las
+	// puntuaciones actuales.
+	// Post: Retorna una cadena de texto que representa el estado completo de
+	// 'puntuaciones' en formato serializado "nombre1:puntos1,nombre2:puntos2,...".
 	private String serializarPuntuaciones() {
+		// serializa las puntuaciones 'nombre1:puntuaciónX,nombre2:puntuaciónY'
 		return puntuaciones.entrySet().stream().map(e -> e.getKey() + ":" + e.getValue())
 				.collect(Collectors.joining(","));
 	}
 
-	
-
-	
+	// Pre: 'perdedor' es el hilo del cliente que ha cerrado la conexión (llamado
+	// desde el bloque finally de ClienteGestorHilos).
+	// Post: El jugador es marcado como inactivo en 'jugadoresActivos'. El evento y
+	// el jugador son añadidos a 'perdedoresPartida'. Se notifica a todos los
+	// jugadores activos restantes mediante "EVENTO_ABANDONO|DESCONEXION". El estado
+	// del hilo 'perdedor' es limpiado (enPartida=false, partidaActual=null).
+	// Finalmente, se verifica si la partida debe terminar llamando a
+	// 'verificarFinDePartidaPorAbandono()'.
 	public void procesarDesconexion(ClienteGestorHilos perdedor) {
 		String nombrePerdedor = perdedor.getNombreUsuario();
-	    
-	    // comprueba si ya estaba marcado como inactivo 
-	    if (!jugadoresActivos.getOrDefault(nombrePerdedor, false)) {
-	        return; 
-	    }
-	    
-	    // marcar como inactivo
-	    jugadoresActivos.put(nombrePerdedor, false);
 
-	    // registrar en la lista de perdedores
-	    perdedoresPartida.add(nombrePerdedor + " (Desconexión)");
+		// comprueba si ya estaba marcado como inactivo
+		if (!jugadoresActivos.getOrDefault(nombrePerdedor, false)) {
+			return;
+		}
 
-	    // Notificación general a todos los que quedan
-	    notificarATodos("EVENTO_ABANDONO|DESCONEXION|" + nombrePerdedor);
-	    System.out.println(nombrePerdedor + " se ha desconectado.");
+		// marcar como inactivo
+		jugadoresActivos.put(nombrePerdedor, false);
 
-	    // limpieza del hilo perdedor (ya que el hilo ya está en 'finally' de ClienteGestorHilos)
-	    perdedor.setEnPartida(false);
-	    perdedor.setPartidaActual(null);
+		// registrar en la lista de perdedores
+		perdedoresPartida.add(nombrePerdedor + " (Desconexión)");
 
-	    // Verificar si solo queda un jugador (el ganador)
-	    verificarFinDePartidaPorAbandono("Abandono (Desconexión)");
+		// Notificación general a todos los que quedan
+		notificarATodos("EVENTO_ABANDONO|DESCONEXION|" + nombrePerdedor);
+		System.out.println(nombrePerdedor + " se ha desconectado.");
+
+		// limpieza del hilo perdedor (ya que el hilo ya está en 'finally' de
+		// ClienteGestorHilos)
+		perdedor.setEnPartida(false);
+		perdedor.setPartidaActual(null);
+
+		// Verificar si solo queda un jugador (el ganador)
+		verificarFinDePartidaPorAbandono("Abandono (Desconexión)");
 	}
 
-	
+	// Pre: 'perdedor' es el hilo del cliente que ha enviado el comando "RENDIRSE".
+	// Post: El jugador es marcado como inactivo en 'jugadoresActivos'. El evento y
+	// el jugador son añadidos a 'perdedoresPartida'. Se notifica a todos los
+	// jugadores activos restantes mediante "EVENTO_ABANDONO|RENDICION". El cliente
+	// 'perdedor' recibe un mensaje de fin de partida y su estado de hilo es
+	// limpiado. Finalmente, se verifica si la partida debe terminar llamando a
+	// 'verificarFinDePartidaPorAbandono()'.
 	public void procesarRendicion(ClienteGestorHilos perdedor) {
 		String nombrePerdedor = perdedor.getNombreUsuario();
 
-	    // marcar como inactivo si no lo está
-	    if (!jugadoresActivos.getOrDefault(nombrePerdedor, false)) {
-	        perdedor.sendMessage("ERROR|Ya has abandonado la partida.");
-	        return;
-	    }
-	    jugadoresActivos.put(nombrePerdedor, false);
-	    
-	    // Registrar en la lista de perdedores
-	    perdedoresPartida.add(nombrePerdedor + " (Rendición)");
-
-	    // notificación general a todos los que quedan
-	    notificarATodos("EVENTO_ABANDONO|RENDICION|" + nombrePerdedor);
-	    System.out.println(nombrePerdedor + " se ha rendido.");
-
-	    // notificación y limpieza del hilo perdedor
-	    perdedor.sendMessage("FIN_PARTIDA|Te has rendido. Volviendo al menú principal.|" + serializarPuntuaciones());
-	    perdedor.setEnPartida(false);
-	    perdedor.setPartidaActual(null);
-	    
-	    // Verificar si solo queda un jugador (el ganador)
-	    verificarFinDePartidaPorAbandono("Abandono (Rendición)");
+		// marcar como inactivo si no lo está
+		if (!jugadoresActivos.getOrDefault(nombrePerdedor, false)) {
+			perdedor.sendMessage("ERROR|Ya has abandonado la partida.");
+			return;
 		}
-	
+		jugadoresActivos.put(nombrePerdedor, false);
+
+		// Registrar en la lista de perdedores
+		perdedoresPartida.add(nombrePerdedor + " (Rendición)");
+
+		// notificación general a todos los que quedan
+		notificarATodos("EVENTO_ABANDONO|RENDICION|" + nombrePerdedor);
+		System.out.println(nombrePerdedor + " se ha rendido.");
+
+		// notificación y limpieza del hilo perdedor
+		perdedor.sendMessage("FIN_PARTIDA|Te has rendido. Volviendo al menú principal.|" + serializarPuntuaciones());
+		perdedor.setEnPartida(false);
+		perdedor.setPartidaActual(null);
+
+		// Verificar si solo queda un jugador (el ganador)
+		verificarFinDePartidaPorAbandono("Abandono (Rendición)");
+	}
+
+	// Pre: Se llama después de que un jugador se rinde o se desconecta.
+	// Post: Si el número de jugadores activos es menor o igual a 1:
+	// - Si se encuentra un ganador único, se llama a
+	// 'terminarPartidaPorGanadorUnico()'.
+	// - Si no queda ningún jugador activo (todos abandonaron), se llama a
+	// 'terminarPartidaSinGanador()'.
 	private void verificarFinDePartidaPorAbandono(String causaAbandono) {
-	    long activos = jugadoresActivos.values().stream().filter(b -> b).count();
+		long activos = jugadoresActivos.values().stream().filter(b -> b).count();
 
-	    if (activos <= 1) {
-	        // Encontrar al único ganador (si lo hay)
-	        ClienteGestorHilos ganador = jugadores.stream()
-	            .filter(hilo -> jugadoresActivos.getOrDefault(hilo.getNombreUsuario(), false))
-	            .findFirst()
-	            .orElse(null);
-	            
-	        // Si hay un jugador activo (ganador), terminamos la partida
-	        if (ganador != null) {
-	            terminarPartidaPorGanadorUnico(ganador, causaAbandono);
-	        } else {
-	            // Caso: Partida terminada sin ganador (todos se deconectan)
-	            terminarPartidaSinGanador("Todos se desconectaron/rindieron.");
-	        }
-	    }
+		if (activos <= 1) {
+			// Encontrar al único ganador (si lo hay)
+			ClienteGestorHilos ganador = jugadores.stream()
+					.filter(hilo -> jugadoresActivos.getOrDefault(hilo.getNombreUsuario(), false)).findFirst()
+					.orElse(null);
+
+			// Si hay un jugador activo (ganador), terminamos la partida
+			if (ganador != null) {
+				terminarPartidaPorGanadorUnico(ganador, causaAbandono);
+			} else {
+				// Caso: Partida terminada sin ganador (todos se deconectan)
+				terminarPartidaSinGanador("Todos se desconectaron/rindieron.");
+			}
+		}
 	}
-	
+
+	// Pre: Se llama cuando el contador de jugadores activos llega a cero (todos
+	// abandonaron).
+	// Post: Se genera un resumen de la partida sin ganador y se registra en el
+	// historial del coordinador. Se limpian los estados de los hilos remanentes.
 	private void terminarPartidaSinGanador(String causa) {
-	    String participantes = obtenerListaParticipantes();
-	    String resumen = String.format("PARTICIPANTES: %s @ RESULTADO: %s @ FIN: %s", 
-	        participantes, serializarPuntuaciones(), causa);
+		String participantes = obtenerListaParticipantes();
+		String resumen = String.format("PARTICIPANTES: %s @ RESULTADO: %s @ FIN: %s", participantes,
+				serializarPuntuaciones(), causa);
 
-	    DobbleServer.getCoordinadorPartida().registrarResultado(resumen);
+		DobbleServer.getCoordinadorPartida().registrarResultado(resumen);
 
-	    // Limpieza de todos los hilos (aunque ya se hizo al abandonar/desconectar)
-	    for (ClienteGestorHilos jugador : jugadores) {
-	        if (jugador.getPartidaActual() == this) {
-	             jugador.setEnPartida(false);
-	             jugador.setPartidaActual(null);
-	             // Solo notificar a los que no han sido notificados (ya se hizo en procesarRendicion)
-	        }
-	    }
-	    System.out.println("Partida finalizada. Causa: " + causa);
+		// Limpieza de todos los hilos (aunque ya se hizo al abandonar/desconectar)
+		for (ClienteGestorHilos jugador : jugadores) {
+			if (jugador.getPartidaActual() == this) {
+				jugador.setEnPartida(false);
+				jugador.setPartidaActual(null);
+				// Solo notificar a los que no han sido notificados (ya se hizo en
+				// procesarRendicion)
+			}
+		}
+		System.out.println("Partida finalizada. Causa: " + causa);
 	}
-	
-	
-	/*
-	 * Procesa el intento de un jugador. - se le pasa el hilo del jugador y el
-	 * símbolo identificado
-	 */
+
+	// Pre: 'jugador' es un hilo de cliente activo en esta partida, y 'simbolo' es
+	// el entero que representa la carta pulsada. 'cartaCentral' no debe ser nulo.
+	// Post: Se valida la coincidencia. Si es correcta: la puntuación del jugador se
+	// incrementa, se notifica el punto a todos, se actualizan las cartas (la
+	// central pasa al jugador, se reparte una nueva central) y, si el mazo se
+	// agota, se llama a 'terminarPartida()', si no, se llama a
+	// 'iniciarNuevaRonda()'. Si es incorrecta, se envía un mensaje de error al
+	// jugador.
 	public void procesarIntento(ClienteGestorHilos jugador, int simbolo) {
 
 		// Si la partida ha terminado, se ignora el intento
@@ -274,9 +323,11 @@ public class DobblePartida {
 		}
 	}
 
-	// después de que un jugador gana un punto, se llama a este método,
-	// para enviarles a todos los jugadores las nuevas cartas, para la siguiente
-	// ronda (actualiza)
+	// Pre: Se ha completado el procesamiento de un punto y se ha extraído la nueva
+	// 'cartaCentral' (que no es nula).
+	// Post: El comando "NUEVA_RONDA|..." se envía a todos los jugadores,
+	// conteniendo su nueva carta de mano, la nueva carta central y las puntuaciones
+	// actualizadas, iniciando la siguiente ronda.
 	private void iniciarNuevaRonda() {
 		// serializa la carta central a String
 		String cartaCentralSerializada = serializarCarta(cartaCentral);
@@ -292,119 +343,134 @@ public class DobblePartida {
 		}
 	}
 
-	
+	// Pre: Se llama cuando 'logica.repartirCarta()' retorna nulo (el mazo se ha
+	// agotado).
+	// Post: Se determina el ganador (o empate) entre los jugadores activos. Se
+	// genera el resumen final con el ranking por puntos seguido del orden inverso
+	// de abandono, y se registra en 'CoordinadorPartida'. Se notifica el fin a
+	// todos los clientes activos y se limpian sus estados.
 	private void terminarPartida() {
 		String ganador = obtenerGanador();
-	    String puntuacionesFinales = serializarPuntuaciones();
-	    String participantes = obtenerListaParticipantes();
-	    
-	    // crear el ranking de los jugadores que terminaron jugando (activos)
-	    List<String> rankingActivos = puntuaciones.entrySet().stream()
-	        // filtrar solo los que estaban activos al final del juego (no abandonaron)
-	        .filter(entry -> jugadoresActivos.getOrDefault(entry.getKey(), false)) 
-	        // Ordenar por puntuación de forma descendente (el de mayor puntuación primero)
-	        .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-	        // Formatear: Nombre (Puntos)
-	        .map(entry -> entry.getKey() + " (" + entry.getValue() + " puntos)")
-	        .collect(Collectors.toList());
+		String puntuacionesFinales = serializarPuntuaciones();
+		String participantes = obtenerListaParticipantes();
 
-	    //crear la lista final del orden
-	    // - Empieza con el ranking de activos (mayor puntuación a menor).
-	    // - Le concatena la lista de perdedoresPartida (ordenados cronológicamente por abandono).
-	    
-	    // La lista 'perdedoresPartida' ya contiene el orden cronológico de abandono:
-	    
-	    
-	    List<String> ordenFinal = new ArrayList<>();
-	    
-	    // Añadir primero el ranking por puntos
-	    ordenFinal.addAll(rankingActivos);
-	    
-	    // añadir después los perdedores por abandono (los que se fueron primero van a la derecha)
-	    ordenFinal.addAll(perdedoresPartida);
+		// crear el ranking de los jugadores que terminaron jugando (activos)
+		List<String> rankingActivos = puntuaciones.entrySet().stream()
+				.filter(entry -> jugadoresActivos.getOrDefault(entry.getKey(), false))
+				// Ordenar por puntuación de forma descendente
+				.sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+				// Formatear: Nombre (Puntos)
+				.map(entry -> entry.getKey() + " (" + entry.getValue() + " puntos)").collect(Collectors.toList());
 
-	    //generar el resumen del historial
-	    String resumen = String.format("PARTICIPANTES: %s @ GANADOR: %s @ RESULTADO: %s @ FIN: Mazo Agotado @ ORDEN_FINAL: %s", 
-	        participantes, ganador, puntuacionesFinales, String.join(" -> ", ordenFinal));
+		// aplicar el orden de abandono inverso
+		List<String> ordenFinal = new ArrayList<>();
 
-	    //registra el resultado en el CoordinadorPartida para guardarlo en el historial
-	    DobbleServer.getCoordinadorPartida().registrarResultado(resumen);
+		// Añadir primero el ranking por puntos
+		ordenFinal.addAll(rankingActivos);
 
-	    // avisa el fin a todos los jugadores que siguen activos
-	    notificarATodos("FIN_PARTIDA|Partida finalizada. Ganador: " + ganador + ".|"
-	            + puntuacionesFinales);
+		// invertir la lista de perdedores: el último en abandonar va antes.
+		List<String> perdedoresInvertidos = new ArrayList<>(perdedoresPartida);
+		Collections.reverse(perdedoresInvertidos);
 
-	    // Actualiza el estado de los jugadores
-	    for (ClienteGestorHilos jugador : jugadores) {
-	        if (jugador.getPartidaActual() == this) {
-	            jugador.setEnPartida(false);
-	            jugador.setPartidaActual(null);
-	        }
-	    }
+		// añadir los perdedores invertidos. El primero en abandonar irá a la derecha
+		// del todo.
+		ordenFinal.addAll(perdedoresInvertidos);
 
-	    System.out.println("Partida finalizada. Ganador: " + ganador);
+		// generar el resumen del historial
+		String resumen = String.format(
+				"PARTICIPANTES: %s @ GANADOR: %s @ RESULTADO: %s @ FIN: Mazo Agotado @ ORDEN_FINAL: %s", participantes,
+				ganador, puntuacionesFinales, String.join(" -> ", ordenFinal));
+
+		DobbleServer.getCoordinadorPartida().registrarResultado(resumen);
+
+		notificarATodos("FIN_PARTIDA|Partida finalizada. Ganador: " + ganador + ".|" + puntuacionesFinales);
+
+		for (ClienteGestorHilos jugador : jugadores) {
+			if (jugador.getPartidaActual() == this) {
+				jugador.setEnPartida(false);
+				jugador.setPartidaActual(null);
+			}
+		}
+
+		System.out.println("Partida finalizada. Ganador: " + ganador);
 	}
 
-	/*
-	 * Obtiene una cadena con los nombres de todos los participantes. Ejemplo:
-	 * "nombrejugador1, nombrejugador2" (serializa los nombres)
-	 */
+	// Pre: La lista 'jugadores' está inicializada.
+	// Post: Retorna una cadena de texto que contiene los nombres de todos los
+	// jugadores que participaron en la partida, separados por coma y espacio.
 	private String obtenerListaParticipantes() {
 		return this.jugadores.stream().map(ClienteGestorHilos::getNombreUsuario).collect(Collectors.joining(", "));
 	}
 
-	// devuelve el ganador único o el empate de ganadores
+	// Pre: Se llama al final de la partida por mazo agotado. 'puntuaciones' está
+	// actualizada.
+	// Post: Retorna una cadena de texto con el nombre del jugador (o jugadores en
+	// caso de empate) con la puntuación más alta, considerando solo a los jugadores
+	// que estaban activos al finalizar el mazo. Retorna "Nadie" si todos
+	// abandonaron antes del fin.
 	private String obtenerGanador() {
-		// Filtra las puntuaciones de los jugadores que estaban activos al final del mazo.
-	    Map<String, Integer> puntuacionesActivas = puntuaciones.entrySet().stream()
-	        .filter(entry -> jugadoresActivos.getOrDefault(entry.getKey(), false))
-	        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-	    // Caso extremo si todos abandonan antes de acabar el mazo.
-	    if (puntuacionesActivas.isEmpty()) {
-	        return "Nadie"; 
-	    }
+		// Filtra las puntuaciones de los jugadores que estaban activos al final del
+		// mazo.
+		Map<String, Integer> puntuacionesActivas = puntuaciones.entrySet().stream()
+				.filter(entry -> jugadoresActivos.getOrDefault(entry.getKey(), false))
+				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+		// Caso extremo si todos abandonan antes de acabar el mazo.
+		if (puntuacionesActivas.isEmpty()) {
+			return "Nadie";
+		}
 
-	    int maxPuntos = puntuacionesActivas.values().stream().max(Integer::compare).orElse(0);
+		int maxPuntos = puntuacionesActivas.values().stream().max(Integer::compare).orElse(0);
 
-	    // Encuentra a todos los que tienen la puntuación máxima (empate)
-	    List<String> ganadores = puntuacionesActivas.entrySet().stream()
-	        .filter(entry -> entry.getValue() == maxPuntos)
-	        .map(Map.Entry::getKey)
-	        .collect(Collectors.toList());
+		// Encuentra a todos los que tienen la puntuación máxima (empate)
+		List<String> ganadores = puntuacionesActivas.entrySet().stream().filter(entry -> entry.getValue() == maxPuntos)
+				.map(Map.Entry::getKey).collect(Collectors.toList());
 
-	    if (ganadores.size() > 1) {
-	        return "Empate entre: " + String.join(", ", ganadores);
-	    } else {
-	        return ganadores.get(0);
-	    }
+		if (ganadores.size() > 1) {
+			return "Empate entre: " + String.join(", ", ganadores);
+		} else {
+			return ganadores.get(0);
+		}
 	}
-	
-	
+
+	// Pre: Se llama desde 'verificarFinDePartidaPorAbandono()' cuando solo queda un
+	// jugador activo ('ganador').
+	// Post: Se genera el resumen final con el 'ganador' seguido del orden inverso
+	// de abandono, y se registra en el historial. El 'ganador' recibe el mensaje de
+	// "FIN_PARTIDA|Ganaste por abandono" y su estado es limpiado.
 	private void terminarPartidaPorGanadorUnico(ClienteGestorHilos ganador, String causa) {
-	    String nombreGanador = ganador.getNombreUsuario();
-	    String puntuacionesFinales = serializarPuntuaciones();
-	    // Incluye a todos, activos e inactivos
-	    String participantes = obtenerListaParticipantes(); 
-	    
-	    // Añadir el ganador a la lista de participantes para el historial
-	    List<String> listaFinal = new ArrayList<>(perdedoresPartida);
-	    listaFinal.add(nombreGanador + " (Ganador)");
+		String nombreGanador = ganador.getNombreUsuario();
+		String puntuacionesFinales = serializarPuntuaciones();
+		String participantes = obtenerListaParticipantes();
 
-	    String resumen = String.format("PARTICIPANTES: %s @ RESULTADO: %s @ FIN: %s @ ORDEN_FINAL: %s", 
-	        participantes, puntuacionesFinales, causa, String.join(" -> ", listaFinal));
+		// crear la lista final del orden (ranking)
+		List<String> ordenFinal = new ArrayList<>();
 
-	    DobbleServer.getCoordinadorPartida().registrarResultado(resumen);
+		// añadir el ganador al principio (izquierda del todo)
+		ordenFinal.add(nombreGanador + " (Ganador - " + puntuaciones.get(nombreGanador) + " puntos)");
 
-	    String mensaje = String.format("¡Eres el único jugador restante! Has ganado por %s.", 
-	        causa.toLowerCase());
-	        
-	    // Notifica el fin de partida solo al ganador
-	    ganador.sendMessage("FIN_PARTIDA|" + mensaje + "|" + puntuacionesFinales);
+		// aplicar el orden de abandono inversoo
+		// invertir la lista de perdedores: el último en abandonar va después del
+		// ganador.
+		List<String> perdedoresInvertidos = new ArrayList<>(perdedoresPartida);
+		Collections.reverse(perdedoresInvertidos);
 
-	    // Actualiza el estado del ganador
-	    ganador.setEnPartida(false);
-	    ganador.setPartidaActual(null);
+		// añadir los perdedores invertidos. El primero en abandonar irá a la derecha
+		// del todo.
+		ordenFinal.addAll(perdedoresInvertidos);
 
-	    System.out.printf("Partida finalizada por %s. Ganador: %s.%n", causa.toLowerCase(), nombreGanador);
+		// generar el resumen del historial
+		String resumen = String.format("PARTICIPANTES: %s @ RESULTADO: %s @ FIN: %s @ ORDEN_FINAL: %s", participantes,
+				puntuacionesFinales, causa, String.join(" -> ", ordenFinal));
+
+		DobbleServer.getCoordinadorPartida().registrarResultado(resumen);
+
+		String mensaje = String.format("¡Eres el único jugador restante! Has ganado por %s.", causa.toLowerCase());
+
+		ganador.sendMessage("FIN_PARTIDA|" + mensaje + "|" + puntuacionesFinales);
+
+		ganador.setEnPartida(false);
+		ganador.setPartidaActual(null);
+
+		System.out.printf("Partida finalizada por %s. Ganador: %s.%n", causa.toLowerCase(), nombreGanador);
 	}
 }

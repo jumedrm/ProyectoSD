@@ -1,7 +1,6 @@
 package JuegoDobble;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /*
 Coordina la concurrencia y decide cuándo se
@@ -21,17 +20,23 @@ public class CoordinadorPartida {
 	// para que varios hilos no intenten leer y escribir al mismo tiempo.
 	private List<String> historialPartidas = new ArrayList<>();
 
-	// Inicializa la lista de espera para tipos de partida comunes, mínimo 2
-	// jugadores, máximo 8
-	// Crea la lista de espera vacía para cada posible tamaño de partida
+	// Pre: Ninguna.
+	// Post: La estructura 'salasDeEspera' se inicializa, creando una lista de
+	// espera vacía (LinkedList) para cada tamaño de partida posible (2 a 8
+	// jugadores).
 	public CoordinadorPartida() {
 		for (int i = 2; i <= 8; i++) {
 			salasDeEspera.put(i, new LinkedList<>());
 		}
 	}
 
-	// maneja la lógica de la sala de espera y pone una partida en activo o no
-	// se le pasa el jugador que quiere jugar y el tamaño de partida solicitada
+	// Pre: 'jugador' es un ClienteGestorHilos válido que no está actualmente en una
+	// partida o sala de espera; 'maxJugadores' está entre 2 y 8 (esta validación se
+	// hace en ClienteGestorHilos).
+	// Post: Se sincroniza el acceso a la sala. Si la sala correspondiente a
+	// 'maxJugadores' se llena (alcanza o excede el límite), la lista de jugadores
+	// se vacía y se llama a 'iniciarNuevaPartida()'. Si la sala no se llena, el
+	// jugador se añade a la cola y se le envía un mensaje de espera.
 	public void joinWaitingList(ClienteGestorHilos jugador, int maxJugadores) {
 		// lista de jugadores(hilos)en un principio vacía, que corresponde al número de
 		// jugadores deseado para jugar ese tipo de partida
@@ -61,7 +66,9 @@ public class CoordinadorPartida {
 		}
 	}
 
-	// se llama desde el ClienteGestorHilos de un jugador que se desconecta.
+	// Pre: 'jugador' es una instancia válida de ClienteGestorHilos.
+	// Post: Se recorren todas las salas de espera. Si el 'jugador' se encuentra en
+	// alguna de ellas, es removido de la lista de espera.
 	public void removerJugador(ClienteGestorHilos jugador) {
 		// Quitarlo de cualquier sala de espera si está allí
 		for (List<ClienteGestorHilos> sala : salasDeEspera.values()) {
@@ -71,7 +78,11 @@ public class CoordinadorPartida {
 		}
 	}
 
-	// de estar la partida en espera a ponerla en juego
+	// Pre: 'jugadores' es una lista de ClienteGestorHilos cuyo tamaño es igual o
+	// mayor al número de jugadores requerido para la partida.
+	// Post: Se crea una nueva instancia de 'DobblePartida' con la lista de
+	// 'jugadores'. Esta nueva instancia se añade a la lista global
+	// 'partidasActivas'.
 	private void iniciarNuevaPartida(List<ClienteGestorHilos> jugadores) {
 		System.out.println("Iniciando nueva partida con " + jugadores.size() + " jugadores.");
 		// crea la partida
@@ -81,8 +92,11 @@ public class CoordinadorPartida {
 		partidasActivas.add(nuevaPartida);
 	}
 
-	// almacena el resultado de una partida
-	// método usado por DobblePartida cuando termina
+	// Pre: 'resumenPartida' es una cadena de texto formateada que contiene todos
+	// los detalles del resultado de una partida recién terminada.
+	// Post: Se añade 'resumenPartida' al final de la lista 'historialPartidas'. La
+	// operación se realiza bajo un bloque sincronizado para garantizar la seguridad
+	// en un entorno concurrente.
 	public void registrarResultado(String resumenPartida) {
 		// si dos partidas terminan simultaneamente, el resumen de ambas se guarda bien
 		synchronized (historialPartidas) {
@@ -90,7 +104,11 @@ public class CoordinadorPartida {
 		}
 	}
 
-	// Método llamado por ClienteGestorHilos cuando un cliente pide el historial
+	// Pre: Ninguna.
+	// Post: Si 'historialPartidas' está vacío, retorna el comando
+	// "HISTORIAL|NO_DATA". Si hay datos, retorna el comando "HISTORIAL|" seguido de
+	// una cadena que une todos los resúmenes de partida ('resumenPartida')
+	// separados por el delimitador '###'.
 	public String getHistorial() {
 		if (historialPartidas.isEmpty()) {
 			return "HISTORIAL|NO_DATA";

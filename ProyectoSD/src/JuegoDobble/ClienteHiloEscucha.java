@@ -1,7 +1,7 @@
 package JuegoDobble;
 
 import java.io.*;
-import java.net.Socket;
+
 
 //Hilo dedicado a escuchar permanentemente mensajes del servidor al cliente
 public class ClienteHiloEscucha implements Runnable {
@@ -11,14 +11,22 @@ public class ClienteHiloEscucha implements Runnable {
 	// para recibir datos del server
 	private BufferedReader in;
 
-	// inicializa las variables en el constructor
+	// Pre: 'gui' es una instancia válida de DobbleClient y 'in' es un
+	// BufferedReader inicializado, vinculado al InputStream del Socket con el
+	// servidor.
+	// Post: Se inicializan las variables de instancia 'this.gui' y 'this.in',
+	// preparando el hilo para comenzar a escuchar.
 	public ClienteHiloEscucha(DobbleClient gui, BufferedReader in) {
 		this.gui = gui;
 		this.in = in;
 	}
 
-	// comportamiento del hilo: recibir todo el rato mensajes, pero se bloquea y así
-	// no se bloquea el cliente/gui/interfaz gráfica
+	// Pre: El hilo ha sido iniciado por 'new Thread(this).start()'. El
+	// BufferedReader 'in' está abierto y conectado al servidor.
+	// Post: El hilo se bloquea en 'in.readLine()' esperando indefinidamente
+	// respuestas del servidor. Cada respuesta recibida se pasa a
+	// 'gui.procesarRespuesta()' para su manejo en el hilo de la GUI (EDT). El bucle
+	// finaliza si el servidor cierra la conexión, lanzando una IOException.
 	@Override
 	public void run() {
 		try {

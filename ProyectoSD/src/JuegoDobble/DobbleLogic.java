@@ -1,10 +1,8 @@
 package JuegoDobble;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /* Contiene las reglas del Dobble
    - Genera el mazo de cartas
@@ -27,6 +25,11 @@ public class DobbleLogic {
 	// 57 cartas y 57 números (del 1 al 57)
 	private static final int NUMERO_TOTAL_SIMBOLOS = ORDEN * ORDEN + ORDEN + 1;
 
+	// Pre: Ninguna. Las constantes ORDEN, SIMBOLOS_POR_CARTA y
+	// NUMERO_TOTAL_SIMBOLOS son correctas (7, 8 y 57, respectivamente).
+	// Post: La estructura 'this.mazo' es inicializada con 57 cartas válidas,
+	// generadas según el Plano Proyectivo. La lista 'mazo' es barajeada
+	// aleatoriamente.
 	public DobbleLogic() {
 		// genera el mazo
 		this.mazo = generarMazoDobble();
@@ -37,12 +40,12 @@ public class DobbleLogic {
 				"Mazo Dobble generado. Cartas: " + this.mazo.size() + ", Símbolos por carta: " + SIMBOLOS_POR_CARTA);
 	}
 
-	/*
-	 * Genera el mazo Dobble basado en el Plano Proyectivo de Orden 7. - Se van a
-	 * generar 57 cartas, cada una con 8 números distintos (entre el 1 y el 57) y se
-	 * va a cumplir que dos cartas cualesquiera, sólo tienen un número en común.
-	 */
+	// Pre: Las constantes ORDEN (7) y NUMERO_TOTAL_SIMBOLOS (57) son válidas.
+	// Post: Retorna una lista de List<Integer> ('mazoGenerado') que contiene un
+	// total de 57 cartas (49 + 7 + 1). Se garantiza que cada carta contiene 8
+	// símbolos y que cada par de cartas tiene exactamente un símbolo en común.
 	public List<List<Integer>> generarMazoDobble() {
+		// Genera el mazo Dobble basado en el Plano Proyectivo de Orden 7.
 		// crea la lista con tamaño 57, para las 57 cartas
 		List<List<Integer>> mazoGenerado = new ArrayList<>(NUMERO_TOTAL_SIMBOLOS);
 		// El método divide las 57 cartas en tres grupos principales (49 líneas finitas,
@@ -113,11 +116,9 @@ public class DobbleLogic {
 		return mazoGenerado;
 	}
 
-	/*
-	 * Saca y devuelve la siguiente carta del mazo. - El remove(0), elimina del mazo
-	 * la primera carta y la devuelve con el return, en este caso como la carta es
-	 * una lista de 8 enteros, devuelve la lista de números de esta primera carta
-	 */
+	// Pre: La lista 'mazo' está inicializada y contiene las cartas restantes.
+	// Post: Si 'mazo' no está vacío, la primera carta es eliminada del mazo y
+	// retornada. Si el mazo está vacío, retorna 'null'.
 	public List<Integer> repartirCarta() {
 		if (!mazo.isEmpty()) {
 			return mazo.remove(0);
@@ -125,10 +126,12 @@ public class DobbleLogic {
 		return null;
 	}
 
-	/*
-	 * Verifica que el símbolo seleccionado esté en ambas cartas. Esta es la lógica
-	 * de validación.
-	 */
+	// Pre: 'simbolo' es el ID numérico del símbolo intentado. 'cartaJugador' y
+	// 'cartaCentral' son List<Integer> representando los símbolos de las cartas
+	// actuales.
+	// Post: Retorna 'true' si el 'simbolo' está presente tanto en 'cartaJugador'
+	// como en 'cartaCentral' (coincidencia válida). Retorna 'false' en cualquier
+	// otro caso (no hay coincidencia o alguna carta es nula).
 	public boolean esCoincidenciaValida(int simbolo, List<Integer> cartaJugador, List<Integer> cartaCentral) {
 		if (cartaJugador == null || cartaCentral == null) {
 			return false;

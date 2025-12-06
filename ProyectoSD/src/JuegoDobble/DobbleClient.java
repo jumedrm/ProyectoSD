@@ -11,6 +11,9 @@ gestiona la conexión y traduce los mensajes del servidor
 en botones, puntuaciones, cambios de pantalla...
 */
 public class DobbleClient extends JFrame {
+	
+	private static final long serialVersionUID = 1L;
+	
 	// constantes fijas y para pasarle el mismo puerto al server
 	private static final String SERVER_IP = "127.0.0.1";
 	private static final int PUERTO = 12345;
@@ -32,7 +35,7 @@ public class DobbleClient extends JFrame {
 	private JPanel mainPanel;
 	private JTextField txtUsuario;
 	private JTextArea logArea;
-	
+
 	// para elegir numero de jugadores por partida
 	private JComboBox<Integer> numJugadoresSelector;
 
@@ -43,9 +46,9 @@ public class DobbleClient extends JFrame {
 	private static final String VISTA_HISTORIAL = "Historial";
 	private CardLayout cardLayout;
 
-	// el main se encarga de que todo funcione por el hilo de la interfaz gráfica,
-	// comenzando a gestionar este hilo el constructor de la clase
-	// a partir de ahí, gestiona ese hilo de la interfaz gráfica
+	// Pre: Ninguna.
+	// Post: Se lanza el constructor de DobbleClient dentro del Event Dispatch
+	// Thread (EDT) de Swing, iniciando la interfaz gráfica.
 	public static void main(String[] args) {
 		// crear una nueva clase anónima que implementa la interfaz Runnable.
 		Runnable iniciador = new Runnable() {
@@ -60,8 +63,10 @@ public class DobbleClient extends JFrame {
 		SwingUtilities.invokeLater(iniciador);
 	}
 
-	// crea la ventana principal.
-	// el constructor que es llamado por el main
+	// Pre: Se llama desde el EDT (Event Dispatch Thread).
+	// Post: Se inicializa la ventana principal (JFrame), se configura el
+	// CardLayout, se crean e integran las vistas de Login, Menú, Juego e Historial.
+	// La vista inicial es VISTA_LOGIN.
 	public DobbleClient() {
 		setTitle("Dobble Online - Cliente");
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -86,7 +91,10 @@ public class DobbleClient extends JFrame {
 		setVisible(true);
 	}
 
-	// crea la ventana para el login
+	// Pre: Ninguna.
+	// Post: Retorna un JPanel configurado para el inicio de sesión, que contiene el
+	// campo 'txtUsuario' y el botón "Conectar" asociado a la acción
+	// 'intentarConexion()'.
 	private JPanel crearVistaLogin() {
 		JPanel panel = new JPanel(new FlowLayout());
 		panel.add(new JLabel("Nombre de Usuario:"));
@@ -101,55 +109,61 @@ public class DobbleClient extends JFrame {
 		return panel;
 	}
 
-	// crea la ventana para el menú
+	// Pre: Ninguna.
+	// Post: Retorna un JPanel que contiene el selector del número de jugadores, el
+	// botón "Unirse a Partida" (envía JUGAR|N), "Ver Historial" (envía HISTORIAL) y
+	// "Desconectar" (envía DESCONECTAR y sale del sistema), todos con sus Listeners
+	// asociados.
 	private JPanel crearVistaMenu() {
-	    // Definición del panel principal del menú con 4 filas
-	    JPanel panel = new JPanel(new GridLayout(4, 1, 10, 10));
-	    panel.setBorder(BorderFactory.createTitledBorder("Menú Principal"));
+		// Definición del panel principal del menú con 4 filas
+		JPanel panel = new JPanel(new GridLayout(4, 1, 10, 10));
+		panel.setBorder(BorderFactory.createTitledBorder("Menú Principal"));
 
-	    // Contenedor de la primera fila: Selector de jugadores y botón Jugar
-	    JPanel panelJugar = new JPanel(new FlowLayout(FlowLayout.CENTER));
-	    panelJugar.add(new JLabel("Nº de Jugadores:"));
+		// Contenedor de la primera fila: Selector de jugadores y botón Jugar
+		JPanel panelJugar = new JPanel(new FlowLayout(FlowLayout.CENTER));
+		panelJugar.add(new JLabel("Nº de Jugadores:"));
 
-	    // Selector para 2 a 8 jugadores
-	    Integer[] jugadoresOpciones = { 2, 3, 4, 5, 6, 7, 8 };
-	    numJugadoresSelector = new JComboBox<>(jugadoresOpciones);
-	    numJugadoresSelector.setSelectedIndex(0); 
-	    panelJugar.add(numJugadoresSelector);
+		// Selector para 2 a 8 jugadores
+		Integer[] jugadoresOpciones = { 2, 3, 4, 5, 6, 7, 8 };
+		numJugadoresSelector = new JComboBox<>(jugadoresOpciones);
+		numJugadoresSelector.setSelectedIndex(0);
+		panelJugar.add(numJugadoresSelector);
 
-	    JButton btnJugar = new JButton("Unirse a Partida");
-	    panelJugar.add(btnJugar);
-	        
-	    JButton btnHistorial = new JButton("Ver Historial");
-	    JButton btnDesconectar = new JButton("Desconectar");
+		JButton btnJugar = new JButton("Unirse a Partida");
+		panelJugar.add(btnJugar);
 
-	    // AÑADIMOS LOS PANELES Y BOTONES AL GRIDLAYOUT (panel):
-	    // Fila 1: Selector + Botón Jugar
-	    panel.add(panelJugar); 
-	    // Fila 2: Botón Historial
-	    panel.add(btnHistorial);
-	    // Fila 3: Botón Desconectar
-	    panel.add(btnDesconectar);
-	    // Fila 4 queda vacía (debido al GridLayout(4, 1))
+		JButton btnHistorial = new JButton("Ver Historial");
+		JButton btnDesconectar = new JButton("Desconectar");
 
-	    // Acción para solicitar jugar (usa el selector)
-	    btnJugar.addActionListener(e -> {
-	        int numJugadores = (Integer) numJugadoresSelector.getSelectedItem();
-	        enviarComando("JUGAR|" + numJugadores);
-	    });
-	        
-	    btnDesconectar.addActionListener(e -> {
-	        enviarComando("DESCONECTAR");
-	        System.exit(0);
-	    });
+		// AÑADIMOS LOS PANELES Y BOTONES AL GRIDLAYOUT (panel):
+		// Fila 1: Selector + Botón Jugar
+		panel.add(panelJugar);
+		// Fila 2: Botón Historial
+		panel.add(btnHistorial);
+		// Fila 3: Botón Desconectar
+		panel.add(btnDesconectar);
+		// Fila 4 queda vacía (debido al GridLayout(4, 1))
 
-	    // Acción para solicitar el historial
-	    btnHistorial.addActionListener(e -> enviarComando("HISTORIAL"));
+		// Acción para solicitar jugar (usa el selector)
+		btnJugar.addActionListener(e -> {
+			int numJugadores = (Integer) numJugadoresSelector.getSelectedItem();
+			enviarComando("JUGAR|" + numJugadores);
+		});
 
-	    return panel;
+		btnDesconectar.addActionListener(e -> {
+			enviarComando("DESCONECTAR");
+			System.exit(0);
+		});
+
+		// Acción para solicitar el historial
+		btnHistorial.addActionListener(e -> enviarComando("HISTORIAL"));
+
+		return panel;
 	}
 
-	// crea la ventana para el historial
+	// Pre: Ninguna.
+	// Post: Retorna un JPanel que contiene el área de texto 'txtHistorial' y el
+	// botón "Volver al Menú" para la navegación.
 	private JPanel crearVistaHistorial() {
 		JPanel panel = new JPanel(new BorderLayout());
 		panel.setBorder(BorderFactory.createTitledBorder("Historial de Partidas"));
@@ -166,7 +180,11 @@ public class DobbleClient extends JFrame {
 		return panel;
 	}
 
-	// crea la ventana o pantalla del juego, de la partida
+	// Pre: Ninguna.
+	// Post: Retorna un JPanel con el layout de juego que incluye: el área de
+	// 'logArea', el área de 'txtPuntuaciones', los contenedores para las cartas
+	// ('panelCartaCentral' y 'panelCartaJugador') y el botón "Rendirse y Salir"
+	// (envía RENDIRSE).
 	private JPanel crearVistaJuego() {
 		JPanel panel = new JPanel(new BorderLayout(5, 5));
 
@@ -219,7 +237,12 @@ public class DobbleClient extends JFrame {
 		return panel;
 	}
 
-	// crea la carta
+	// Pre: 'panel' es un contenedor de carta (panelCartaCentral o
+	// panelCartaJugador) y 'simbolosStr' es una cadena de símbolos separados por
+	// comas.
+	// Post: Se eliminan todos los componentes del 'panel', y se añaden nuevos
+	// JButtons, uno por cada símbolo. Cada botón está configurado para enviar el
+	// comando "INTENTO|Simbolo" al servidor al ser pulsado. El panel se repinta.
 	private void dibujarCarta(JPanel panel, String simbolosStr) {
 		// limpia el panel antes de añadir nuevos botones
 		panel.removeAll();
@@ -251,7 +274,10 @@ public class DobbleClient extends JFrame {
 		panel.repaint();
 	}
 
-	// método para actualizar las puntuaciones
+	// Pre: 'puntuacionesStr' es una cadena de texto en formato serializado
+	// "nombre1:puntos1,nombre2:puntos2,...".
+	// Post: El área de texto 'txtPuntuaciones' es actualizada con una
+	// representación legible y formateada de las puntuaciones de los jugadores.
 	private void actualizarPuntuaciones(String puntuacionesStr) {
 		// puntuacionesStr "juanlu:1,juan:0"
 		StringBuilder sb = new StringBuilder();
@@ -269,7 +295,13 @@ public class DobbleClient extends JFrame {
 		txtPuntuaciones.setText(sb.toString());
 	}
 
-	// establece conexión con el servidor
+	// Pre: El campo 'txtUsuario' contiene el nombre de usuario que el cliente desea
+	// usar.
+	// Post: Si el nombre de usuario no está vacío, se intenta establecer una
+	// conexión Socket con el servidor. Si es exitosa, se inicializan los streams
+	// 'out' y 'in', se envía el nombre de usuario y se inicia un nuevo hilo
+	// (ClienteHiloEscucha) para procesar las respuestas del servidor. Si falla, se
+	// muestra un mensaje de error.
 	private void intentarConexion() {
 		String usuario = txtUsuario.getText().trim();
 		if (usuario.isEmpty()) {
@@ -297,14 +329,22 @@ public class DobbleClient extends JFrame {
 		}
 	}
 
-	// envía instrucciones al server
+	// Pre: 'comando' es una cadena de texto que sigue el protocolo del servidor
+	// (ej: JUGAR|3, INTENTO|15).
+	// Post: Si el stream 'out' está inicializado (hay conexión), el 'comando' se
+	// envía al servidor para su procesamiento.
 	public void enviarComando(String comando) {
 		if (out != null) {
 			out.println(comando);
 		}
 	}
 
-	// lo usa el hilo secundario ClienteHiloEscucha cuando el servidor envía un mensaje
+	// Pre: 'respuesta' es una cadena de texto recibida del servidor, siguiendo el
+	// protocolo COMMAND|DATOS. Este método se ejecuta en el EDT.
+	// Post: Se analiza el comando recibido ('accion') y se actualiza la GUI de
+	// acuerdo al estado del juego (cambio de vista a menú/juego/historial,
+	// actualización de logs, dibujo de cartas, o visualización de mensajes de
+	// error/fin de partida).
 	public void procesarRespuesta(String respuesta) {
 		SwingUtilities.invokeLater(() -> {
 			String[] partes = respuesta.split("\\|");
@@ -354,23 +394,22 @@ public class DobbleClient extends JFrame {
 				logArea.append("[ERROR JUEGO] " + partes[1] + "\n");
 				break;
 			case "EVENTO_ABANDONO":
-			    // EVENTO_ABANDONO|TIPO|NOMBRE_JUGADOR
-			    String tipo = partes[1]; // RENDICION o DESCONEXION
-			    String nombreJugador = partes[2];
-			    
-			    logArea.append(String.format(">>>>> [ALERTA] %s se ha %s. La partida continúa. <<<<<\n", 
-			        nombreJugador, tipo.equals("RENDICION") ? "rendido" : "desconectado"));
-			    
-			    // No hay que hacer nada más, la partida sigue.
-			    break;
+				// EVENTO_ABANDONO|TIPO|NOMBRE_JUGADOR
+				String tipo = partes[1]; // RENDICION o DESCONEXION
+				String nombreJugador = partes[2];
+
+				logArea.append(String.format(">>>>> [ALERTA] %s se ha %s. La partida continúa. <<<<<\n", nombreJugador,
+						tipo.equals("RENDICION") ? "rendido" : "desconectado"));
+
+				// No hay que hacer nada más, la partida sigue.
+				break;
 			case "FIN_PARTIDA":
 				// FIN_PARTIDA|MensajeGanador|PuntuacionesTotales
 
 				// mensaje de rendición/desconexión
 				String mensaje = partes[1];
 				String puntuaciones = partes[2];
-				
-				
+
 				// muestra el mensaje de forma destacada
 				JOptionPane.showMessageDialog(DobbleClient.this, mensaje + "\n\nPuntuaciones finales: " + puntuaciones,
 						"Partida Finalizada", JOptionPane.INFORMATION_MESSAGE);
