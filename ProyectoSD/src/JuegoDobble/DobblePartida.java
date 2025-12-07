@@ -354,9 +354,17 @@ public class DobblePartida {
 		String puntuacionesFinales = serializarPuntuaciones();
 		String participantes = obtenerListaParticipantes();
 
-		// si es un ganador único, se registra la victoria en el ranking.
-		if (!ganador.startsWith("Empate entre") && !ganador.equals("Nadie")) {
-			DobbleServer.getRankingGlobal().registrarGanador(ganador); // <-- LÍNEA AÑADIDA
+		// Desglosar el resultado para registrar la victoria solo si es un único
+		// ganador.
+		if (ganador.startsWith("Empate entre")) {
+			// Si hay empate, registramos la victoria a todos los empatados.
+			String[] empatados = ganador.substring(14).split(", ");
+			for (String nombre : empatados) {
+				DobbleServer.getRankingGlobal().registrarGanador(nombre);
+			}
+		} else if (!ganador.equals("Nadie")) {
+			// Si es un ganador único, se registra la victoria en el ranking.
+			DobbleServer.getRankingGlobal().registrarGanador(ganador);
 		}
 
 		// crear el ranking de los jugadores que terminaron jugando (activos)
