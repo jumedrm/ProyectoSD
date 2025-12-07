@@ -86,13 +86,14 @@ public class ClienteGestorHilos extends Thread {
 			out.println(message);
 		}
 	}
-	
 
 	// Pre: Los streams 'in' y 'out' han sido inicializados en el constructor.
 	// Post: Se completa el proceso de login con verificación de unicidad (reserva
 	// permanente). El hilo entra en un bucle continuo para leer comandos del
-	// cliente. Si el cliente se desconecta o cierra la conexión, se captura la IOException,
+	// cliente. Si el cliente se desconecta o cierra la conexión, se captura la
+	// IOException,
 	// y se realizan las tareas de limpieza necesarias
+	@Override
 	public void run() {
 		try {
 			while (true) {
