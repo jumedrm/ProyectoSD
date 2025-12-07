@@ -11,9 +11,9 @@ gestiona la conexión y traduce los mensajes del servidor
 en botones, puntuaciones, cambios de pantalla...
 */
 public class DobbleClient extends JFrame {
-	
+
 	private static final long serialVersionUID = 1L;
-	
+
 	// constantes fijas y para pasarle el mismo puerto al server
 	private static final String SERVER_IP = "127.0.0.1";
 	private static final int PUERTO = 12345;
@@ -149,7 +149,6 @@ public class DobbleClient extends JFrame {
 		panel.add(btnRanking);
 		// Fila 4: Botón Desconectar
 		panel.add(btnDesconectar);
-		
 
 		// Acción para solicitar jugar (usa el selector)
 		btnJugar.addActionListener(e -> {
@@ -164,7 +163,7 @@ public class DobbleClient extends JFrame {
 
 		// Acción para solicitar el historial
 		btnHistorial.addActionListener(e -> enviarComando("HISTORIAL"));
-		
+
 		// Acción para solicitar el ranking
 		btnRanking.addActionListener(e -> enviarComando("RANKING"));
 
@@ -189,7 +188,7 @@ public class DobbleClient extends JFrame {
 		panel.add(btnVolver, BorderLayout.SOUTH);
 		return panel;
 	}
-	
+
 	// Pre: Ninguna.
 	// Post: Retorna un JPanel que contiene el área de texto 'txtRanking' y el
 	// botón "Volver al Menú" para la navegación.
@@ -199,7 +198,7 @@ public class DobbleClient extends JFrame {
 
 		txtRanking = new JTextArea();
 		txtRanking.setEditable(false);
-
+		txtRanking.setFont(new Font("Monospaced", Font.PLAIN, 14));
 		// Acción para solicitar volver al menú
 		JButton btnVolver = new JButton("Volver al Menú");
 		btnVolver.addActionListener(e -> cardLayout.show(mainPanel, VISTA_MENU));
@@ -386,8 +385,9 @@ public class DobbleClient extends JFrame {
 				break;
 			case "ERROR":
 				// muestra el mensaje de error y espera a que el usuario introduzca uno nuevo
-				JOptionPane.showMessageDialog(DobbleClient.this, partes[1], "Error de Usuario", JOptionPane.ERROR_MESSAGE);
-				// el cliente debe volver a intentar la conexión con el botón
+				JOptionPane.showMessageDialog(DobbleClient.this, partes[1], "Error de Login",
+						JOptionPane.ERROR_MESSAGE);
+				// NO sale del sistema, mantiene la vista de login activa
 				break;
 			case "ESPERA":
 				logArea.append("[SALA] " + partes[1] + "\n");
@@ -487,7 +487,7 @@ public class DobbleClient extends JFrame {
 					txtHistorial.setText(sb.toString());
 				}
 				break;
-			case "RANKING": // <--- NUEVO CASO
+			case "RANKING": 
 				cardLayout.show(mainPanel, VISTA_RANKING);
 
 				// Contiene todos los resúmenes unidos por ','

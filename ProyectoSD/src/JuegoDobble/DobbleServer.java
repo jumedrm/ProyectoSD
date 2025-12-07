@@ -12,11 +12,14 @@ public class DobbleServer {
 	// duplicados y
 	// Collections.synchronizedSet(...) asegura añadir o eliminar elementos aunque
 	// lo hagan muchos hilos a la vez
-	private static Set<ClienteGestorHilos> clientesConectados = Collections.synchronizedSet(new HashSet<>());
+	public static Set<ClienteGestorHilos> clientesConectados = Collections.synchronizedSet(new HashSet<>());
 	// instancia de CoordinadorPartida para poder jugar varias partidas a la vez
 	private static CoordinadorPartida coordinadorPartida = new CoordinadorPartida();
 	// instancia de DobbleRanking para el historial de victorias
 	private static DobbleRanking rankingGlobal = new DobbleRanking();
+	// Conjunto para reservar nombres de forma permanente.
+	public static final Set<String> nombresReservados = Collections.synchronizedSet(new HashSet<>());
+	public static final boolean LOGGING_ACTIVO = true;
 
 	// Pre: Ninguna. El sistema operativo debe permitir la apertura del puerto
 	// definido (PUERTO = 12345).
@@ -66,23 +69,23 @@ public class DobbleServer {
 	public static CoordinadorPartida getCoordinadorPartida() {
 		return coordinadorPartida;
 	}
-	
+
 	// Pre: Ninguna.
 	// Post: Retorna la única instancia estática y global de DobbleRanking.
 	public static DobbleRanking getRankingGlobal() {
 		return rankingGlobal;
 	}
-	
-	// Pre: 'nombreUsuario' es la cadena de texto a verificar.
-	// Post: Retorna 'true' si ya existe un ClienteGestorHilos activo con ese nombre.
-	public static boolean isUsuarioConectado(String nombreUsuario) {
-		// el set 'clientesConectados' es sincronizado, por lo que es seguro iterar
-		for (ClienteGestorHilos cliente : clientesConectados) {
-			// compara el nombre ignorando mayusculas
-			if (nombreUsuario.equalsIgnoreCase(cliente.getNombreUsuario())) {
-				return true;
-			}
-		}
-		return false;
+
+	// Pre: 'nombre' es la cadena de texto a verificar.
+	// Post: Retorna 'true' si el nombre está en 'nombresReservados', 'false' en
+	// caso contrario.
+	public static boolean isNombreEnUso(String nombre) {
+		// Si es nulo o está vacío, lo bloqueamos por seguridad.
+		if (nombre == null || nombre.trim().isEmpty())
+			return true;
+
+		// Retorna true si el nombre (convertido a mayúsculas) ya está en el conjunto de
+		// reservados.
+		return nombresReservados.contains(nombre.toUpperCase());
 	}
 }

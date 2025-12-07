@@ -2,7 +2,6 @@ package JuegoDobble;
 
 import java.io.*;
 
-
 //Hilo dedicado a escuchar permanentemente mensajes del servidor al cliente
 public class ClienteHiloEscucha implements Runnable {
 

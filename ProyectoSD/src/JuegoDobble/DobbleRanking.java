@@ -19,7 +19,8 @@ public class DobbleRanking {
 	// con 1 punto.
 	public void registrarGanador(String nombreGanador) {
 		synchronized (ranking) {
-			// Usa getOrDefault para obtener el valor actual (o 0 si es nuevo) y luego suma 1.
+			// Usa getOrDefault para obtener el valor actual (o 0 si es nuevo) y luego suma
+			// 1.
 			int victoriasActuales = ranking.getOrDefault(nombreGanador, 0);
 			ranking.put(nombreGanador, victoriasActuales + 1);
 		}
