@@ -72,4 +72,17 @@ public class DobbleServer {
 	public static DobbleRanking getRankingGlobal() {
 		return rankingGlobal;
 	}
+	
+	// Pre: 'nombreUsuario' es la cadena de texto a verificar.
+	// Post: Retorna 'true' si ya existe un ClienteGestorHilos activo con ese nombre.
+	public static boolean isUsuarioConectado(String nombreUsuario) {
+		// el set 'clientesConectados' es sincronizado, por lo que es seguro iterar
+		for (ClienteGestorHilos cliente : clientesConectados) {
+			// compara el nombre ignorando mayusculas
+			if (nombreUsuario.equalsIgnoreCase(cliente.getNombreUsuario())) {
+				return true;
+			}
+		}
+		return false;
+	}
 }

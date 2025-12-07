@@ -384,6 +384,11 @@ public class DobbleClient extends JFrame {
 				cardLayout.show(mainPanel, VISTA_MENU);
 				setTitle("Dobble Online - " + txtUsuario.getText());
 				break;
+			case "ERROR":
+				// muestra el mensaje de error y espera a que el usuario introduzca uno nuevo
+				JOptionPane.showMessageDialog(DobbleClient.this, partes[1], "Error de Usuario", JOptionPane.ERROR_MESSAGE);
+				// el cliente debe volver a intentar la conexión con el botón
+				break;
 			case "ESPERA":
 				logArea.append("[SALA] " + partes[1] + "\n");
 				cardLayout.show(mainPanel, VISTA_MENU);

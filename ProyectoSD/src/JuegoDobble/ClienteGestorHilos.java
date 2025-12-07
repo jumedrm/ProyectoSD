@@ -99,14 +99,31 @@ public class ClienteGestorHilos extends Thread {
 		System.out.println("Cliente conectado desde: " + clientSocket.getInetAddress());
 
 		try {
-			// Inicio de sesión del cliente
-			this.nombreUsuario = in.readLine();
-			System.out.println("Usuario logueado: " + nombreUsuario);
-			sendMessage("LOGIN_OK"); // le confirma al cliente
+			// inicio de sesión comprobando duplicados
+	        String linea;
+	        
+	        // intentamos leer el nombre de usuario inicial
+	        String tempNombreUsuario = in.readLine(); 
 
-			String linea;
-			// mientras la conexión esté abierta y haya datos para leer se ejecuta todo el
-			// rato el bucle
+	        // mientras se reciba un nombre y haya duplicado pedimos uno nuevo
+	        while (tempNombreUsuario != null && DobbleServer.isUsuarioConectado(tempNombreUsuario)) {
+	            // notificamos al cliente el error de duplicado
+	            sendMessage("ERROR|El usuario '" + tempNombreUsuario + "' ya está conectado.");
+	            System.out.println("Intento de login duplicado: " + tempNombreUsuario);
+	            // intentamos leer el nuevo nombre
+	            tempNombreUsuario = in.readLine(); 
+	        }
+	        
+	        // si el cliente no se desconectó y no es duplicado, lo aceptamos.
+	        if (tempNombreUsuario == null) {
+	            System.out.println("Cliente desconectado durante la validación.");
+	            return; // Salir del método run() si el cliente desconectó
+	        }
+
+	        this.nombreUsuario = tempNombreUsuario;
+
+	        System.out.println("Usuario logueado: " + nombreUsuario);
+	        sendMessage("LOGIN_OK"); // le confirma al cliente
 			while ((linea = in.readLine()) != null) {
 				System.out.println("Comando de " + nombreUsuario + ": " + linea);
 				manejarComando(linea);
