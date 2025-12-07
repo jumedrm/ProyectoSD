@@ -173,6 +173,15 @@ public class ClienteGestorHilos extends Thread {
 			String historial = DobbleServer.getCoordinadorPartida().getHistorial();
 			sendMessage(historial);
 			break;
+		case "RANKING":
+			// llama a DobbleRanking para obtener la lista serializada de victorias
+			String rankingSerializado = DobbleServer.getRankingGlobal().getRankingSerializado();
+			if (rankingSerializado.isEmpty()) {
+				sendMessage("RANKING|NO_DATA");
+			} else {
+				sendMessage("RANKING|" + rankingSerializado);
+			}
+			break;
 		case "RENDIRSE":
 			// usa DobblePartida
 			if (enPartida && partidaActual != null) {

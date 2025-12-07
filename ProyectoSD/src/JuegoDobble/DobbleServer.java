@@ -13,8 +13,10 @@ public class DobbleServer {
 	// Collections.synchronizedSet(...) asegura añadir o eliminar elementos aunque
 	// lo hagan muchos hilos a la vez
 	private static Set<ClienteGestorHilos> clientesConectados = Collections.synchronizedSet(new HashSet<>());
-	//instancia de CoordinadorPartida para poder jugar varias partidas a la vez
+	// instancia de CoordinadorPartida para poder jugar varias partidas a la vez
 	private static CoordinadorPartida coordinadorPartida = new CoordinadorPartida();
+	// instancia de DobbleRanking para el historial de victorias
+	private static DobbleRanking rankingGlobal = new DobbleRanking();
 
 	// Pre: Ninguna. El sistema operativo debe permitir la apertura del puerto
 	// definido (PUERTO = 12345).
@@ -63,5 +65,11 @@ public class DobbleServer {
 	// utilizada por el servidor para la gestión de salas e historial.
 	public static CoordinadorPartida getCoordinadorPartida() {
 		return coordinadorPartida;
+	}
+	
+	// Pre: Ninguna.
+	// Post: Retorna la única instancia estática y global de DobbleRanking.
+	public static DobbleRanking getRankingGlobal() {
+		return rankingGlobal;
 	}
 }

@@ -25,6 +25,7 @@ public class DobbleClient extends JFrame {
 
 	private JTextArea txtPuntuaciones;
 	private JTextArea txtHistorial;
+	private JTextArea txtRanking;
 
 	// el socket, para enviar y recibir
 	private Socket socket;
@@ -44,6 +45,7 @@ public class DobbleClient extends JFrame {
 	private static final String VISTA_MENU = "Menu";
 	private static final String VISTA_JUEGO = "Juego";
 	private static final String VISTA_HISTORIAL = "Historial";
+	private static final String VISTA_RANKING = "Ranking";
 	private CardLayout cardLayout;
 
 	// Pre: Ninguna.
@@ -85,6 +87,8 @@ public class DobbleClient extends JFrame {
 		mainPanel.add(crearVistaJuego(), VISTA_JUEGO);
 		// vista del historial
 		mainPanel.add(crearVistaHistorial(), VISTA_HISTORIAL);
+		// vista del ranking
+		mainPanel.add(crearVistaRanking(), VISTA_RANKING);
 
 		// Empezar en la vista de login
 		cardLayout.show(mainPanel, VISTA_LOGIN);
@@ -133,6 +137,7 @@ public class DobbleClient extends JFrame {
 		panelJugar.add(btnJugar);
 
 		JButton btnHistorial = new JButton("Ver Historial");
+		JButton btnRanking = new JButton("Ver Ranking");
 		JButton btnDesconectar = new JButton("Desconectar");
 
 		// AÑADIMOS LOS PANELES Y BOTONES AL GRIDLAYOUT (panel):
@@ -140,9 +145,11 @@ public class DobbleClient extends JFrame {
 		panel.add(panelJugar);
 		// Fila 2: Botón Historial
 		panel.add(btnHistorial);
-		// Fila 3: Botón Desconectar
+		// Fila 3: Botón Ranking
+		panel.add(btnRanking);
+		// Fila 4: Botón Desconectar
 		panel.add(btnDesconectar);
-		// Fila 4 queda vacía (debido al GridLayout(4, 1))
+		
 
 		// Acción para solicitar jugar (usa el selector)
 		btnJugar.addActionListener(e -> {
@@ -157,6 +164,9 @@ public class DobbleClient extends JFrame {
 
 		// Acción para solicitar el historial
 		btnHistorial.addActionListener(e -> enviarComando("HISTORIAL"));
+		
+		// Acción para solicitar el ranking
+		btnRanking.addActionListener(e -> enviarComando("RANKING"));
 
 		return panel;
 	}
@@ -176,6 +186,25 @@ public class DobbleClient extends JFrame {
 		btnVolver.addActionListener(e -> cardLayout.show(mainPanel, VISTA_MENU));
 
 		panel.add(new JScrollPane(txtHistorial), BorderLayout.CENTER);
+		panel.add(btnVolver, BorderLayout.SOUTH);
+		return panel;
+	}
+	
+	// Pre: Ninguna.
+	// Post: Retorna un JPanel que contiene el área de texto 'txtRanking' y el
+	// botón "Volver al Menú" para la navegación.
+	private JPanel crearVistaRanking() {
+		JPanel panel = new JPanel(new BorderLayout());
+		panel.setBorder(BorderFactory.createTitledBorder("Ranking de Victorias"));
+
+		txtRanking = new JTextArea();
+		txtRanking.setEditable(false);
+
+		// Acción para solicitar volver al menú
+		JButton btnVolver = new JButton("Volver al Menú");
+		btnVolver.addActionListener(e -> cardLayout.show(mainPanel, VISTA_MENU));
+
+		panel.add(new JScrollPane(txtRanking), BorderLayout.CENTER);
 		panel.add(btnVolver, BorderLayout.SOUTH);
 		return panel;
 	}
@@ -451,6 +480,35 @@ public class DobbleClient extends JFrame {
 						sb.append("---------------------------\n");
 					}
 					txtHistorial.setText(sb.toString());
+				}
+				break;
+			case "RANKING": // <--- NUEVO CASO
+				cardLayout.show(mainPanel, VISTA_RANKING);
+
+				// Contiene todos los resúmenes unidos por ','
+				String datosRanking = partes[1];
+
+				if (datosRanking.equals("NO_DATA")) {
+					txtRanking.setText("Aún no se ha registrado ninguna victoria.");
+				} else {
+					// El formato es "nombre1:victorias1,nombre2:victorias2,..."
+					String[] rankingJugadores = datosRanking.split(",");
+					StringBuilder sb = new StringBuilder();
+
+					sb.append("---------------------------------\n");
+					sb.append(String.format("%-4s %-20s %s\n", "POS", "JUGADOR", "VICTORIAS"));
+					sb.append("---------------------------------\n");
+
+					for (int i = 0; i < rankingJugadores.length; i++) {
+						String[] datos = rankingJugadores[i].split(":");
+						if (datos.length == 2) {
+							String nombre = datos[0];
+							String victorias = datos[1];
+							sb.append(String.format("%-4d %-20s %s\n", (i + 1), nombre, victorias));
+						}
+					}
+					sb.append("---------------------------------\n");
+					txtRanking.setText(sb.toString());
 				}
 				break;
 			default:
